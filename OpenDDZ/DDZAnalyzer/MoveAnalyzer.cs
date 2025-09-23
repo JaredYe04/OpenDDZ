@@ -3,178 +3,43 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
-
-/*
- 单文件实现：
- - Rank / Card / Move
- - MoveKind enum
- - MoveClassification
- - RuleSet (可配置炸弹比较规则等)
- - MoveAnalyzer: DetectMoveType(move, rules)
- - MoveComparer: CanBeat(prev, next, rules)
- - TestSuite: 一套覆盖常见和corner-case的自动化测试
- - Main: 运行测试并打印结果
-*/
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
 namespace OpenDDZ.DDZAnalyzer
 {
-    // 点数定义（数值用于比较）
-    public enum Rank
-    {
-        Three = 3,
-        Four = 4,
-        Five = 5,
-        Six = 6,
-        Seven = 7,
-        Eight = 8,
-        Nine = 9,
-        Ten = 10,
-        J = 11,
-        Q = 12,
-        K = 13,
-        A = 14,
-        Two = 15,
-        JokerSmall = 16,
-        JokerBig = 17
-    }
-
-    // 简单 Card（这里只用 Rank 来判定）
-    public class Card
-    {
-        public Rank Rank { get; }
-        public Card(Rank r) { Rank = r; }
-        public override string ToString() => Rank.ToString();
-    }
-
-    // 一次出牌（move）
-    public class Move
-    {
-        public List<Card> Cards { get; } = new List<Card>();
-        public Move(IEnumerable<Card> cards) { Cards.AddRange(cards); }
-        public Move(params Rank[] ranks) { foreach (var r in ranks) Cards.Add(new Card(r)); }
-        public override string ToString() => string.Join(",", Cards.Select(c => c.Rank.ToString()));
-    }
-
-    public enum MoveKind
-    {
-        Invalid,
-        Single,
-        Pair,
-        Triplet,
-        ThreeWithOne,
-        ThreeWithPair,
-        Straight,      // (not required by user but provided for completeness) - single sequence
-        ConsecutivePairs,
-        FourWithTwoSingles,
-        FourWithTwoPairs,
-        Plane,         // 飞机（包含带牌情况）
-        Bomb            // 炸弹（任意大小）或王炸（用 classification 的 JokerCount 标记）
-    }
-
-    public enum AttachmentKind
-    {
-        None,
-        Singles,
-        Pairs
-    }
-
-    // 判定结果
-    public class MoveClassification
-    {
-        public MoveKind Kind { get; set; } = MoveKind.Invalid;
-        public Rank PrimaryRank { get; set; } = 0; // e.g., for pair/triplet/bomb: the rank of the main set
-        public int CountPrimary { get; set; } = 0; // how many cards in main set (e.g., bomb size)
-        public int SequenceLength { get; set; } = 0; // 连对长度 or 飞机 n
-        public AttachmentKind AttachKind { get; set; } = AttachmentKind.None;
-        public int AttachCount { get; set; } = 0; // number of attach units (n for n飞)
-        public int JokerCount { get; set; } = 0; // how many jokers used (for bomb)
-        public List<Rank> SequenceRanks { get; set; } = new List<Rank>(); // ranks in sequence/plane
-        public override string ToString()
-        {
-            if (Kind == MoveKind.Bomb)
-            {
-                if (JokerCount > 0) return $"Bomb(Jokers:{JokerCount})";
-                return $"Bomb(size={CountPrimary},rank={PrimaryRank})";
-            }
-            if (Kind == MoveKind.Plane)
-            {
-                return $"Plane(n={SequenceLength}, mainMax={PrimaryRank}, attach={AttachKind}/{AttachCount})";
-            }
-            if (Kind == MoveKind.ConsecutivePairs)
-                return $"ConsecPairs(len={SequenceLength}, mainMax={PrimaryRank})";
-            return $"{Kind} (rank={PrimaryRank},count={CountPrimary})";
-        }
-    }
-
-    // 规则集：包含炸弹比较方法与序列允许范围等
-    public class RuleSet
-    {
-        // 异常玩法可修改
-        public int BombMinimumSize { get; set; } = 4;
-        public bool AllowSequencesWithTwoOrJoker { get; set; } = false;
-
-        // 炸弹权重函数：根据炸弹的大小和jokerCount返回一个数值权重用于比较
-        // 默认实现：遵循用户给定的特殊排序说明（示例中的规则）
-        // - 四王炸（jokerCount==4） -> 全场最大
-        // - 双王炸（jokerCount==2） -> 大于所有4炸，小于5炸
-        // - 三王炸（jokerCount==3） -> 在6炸和7炸之间（作为示例）
-        public Func<int, Rank, int, double> BombPowerFunc { get; set; }
-
-        public RuleSet()
-        {
-            BombPowerFunc = DefaultBombPowerFunc;
-        }
-
-        // 默认炸弹权重函数（可替换）
-        private double DefaultBombPowerFunc(int bombSize, Rank mainRank, int jokerCount)
-        {
-            // base by bomb size
-            double basePower = bombSize * 100.0 + (int)mainRank / 100.0;
-
-            // special handling for joker bombs (use total joker count)
-            if (jokerCount > 0)
-            {
-                // follow the user's mapping roughly:
-                // 4 jokers -> absolute max
-                if (jokerCount >= 4) return 1_000_000; // 四王炸最高
-                if (jokerCount == 3) return 6.5 * 100.0; // between 6炸(600) and 7炸(700)
-                if (jokerCount == 2) return 5 * 100.0 - 1; // greater than all 4炸 (400) but less than 5炸 (500)
-                // single joker bombs unlikely, but give high power
-                return 4.5 * 100.0;
-            }
-
-            // otherwise normal bomb power
-            return basePower;
-        }
-
-        // convenience:
-        public double GetBombPower(MoveClassification c)
-        {
-            return BombPowerFunc(c.CountPrimary, c.PrimaryRank, c.JokerCount);
-        }
-
-        // Default RuleSet for quick use
-        public static RuleSet Default => new RuleSet();
-    }
-
     // 核心判定器
     public static class MoveAnalyzer
     {
+        private static bool IsStraight(List<Card> cards)
+        {
+            // 排序
+            var ordered = cards.OrderBy(c => c.Rank).ToList();
+            // 含2或王，直接不合法
+            if (ordered.Any(c => c.Rank == Rank.Two || c.Rank >= Rank.JokerSmall))
+                return false;
+
+            for (int i = 1; i < ordered.Count; i++)
+            {
+                if ((int)ordered[i].Rank != (int)ordered[i - 1].Rank + 1)
+                    return false;
+            }
+            return true;
+        }
         // 主判定函数：给出 MoveClassification（如果无效则 Kind==Invalid）
         public static MoveClassification Detect(Move move, RuleSet rules)
         {
-            if (move == null || move.Cards.Count == 0) return new MoveClassification { Kind = MoveKind.Invalid };
+            var cards = move.Cards;
+            if (move == null || cards.Count == 0) return new MoveClassification { Kind = MoveKind.Invalid };
 
             // Build counts per rank
             var counts = new Dictionary<Rank, int>();
-            foreach (var c in move.Cards)
+            foreach (var c in cards)
             {
                 counts.TryGetValue(c.Rank, out int v);
                 counts[c.Rank] = v + 1;
             }
 
-            int total = move.Cards.Count;
+            int total = cards.Count;
 
             // Count jokers total
             counts.TryGetValue(Rank.JokerSmall, out int smallJ);
@@ -187,13 +52,18 @@ namespace OpenDDZ.DDZAnalyzer
             // 1) Rocket / Joker bomb: if all cards are jokers (some number)
             if (jokerTotal > 0 && jokerTotal == total)
             {
+                var primaryRank = Rank.JokerBig;
+                //如果两张都是小王，则PrimaryRank为小王
+                if (smallJ == total) primaryRank = Rank.JokerSmall;
+                else primaryRank = Rank.JokerBig;
+                //全王炸的情况，但是要注意双小王和双大王的情况，PrimaryRank需要根据实际情况定
                 return new MoveClassification
-                {
-                    Kind = MoveKind.Bomb,
-                    CountPrimary = jokerTotal,
-                    JokerCount = jokerTotal,
-                    PrimaryRank = Rank.JokerBig // arbitrary
-                };
+                    {
+                        Kind = MoveKind.Bomb,
+                        CountPrimary = jokerTotal,
+                        JokerCount = jokerTotal,
+                        PrimaryRank = primaryRank
+                    };
             }
 
             // 2) Bomb (single rank and count >= BombMinimum)
@@ -242,11 +112,15 @@ namespace OpenDDZ.DDZAnalyzer
             }
             if (total == 1)
             {
-                AddCandidate(new MoveClassification { Kind = MoveKind.Single, PrimaryRank = move.Cards[0].Rank, CountPrimary = 1 });
+                AddCandidate(new MoveClassification { Kind = MoveKind.Single, PrimaryRank = cards[0].Rank, CountPrimary = 1 });
             }
 
             // 8) Bombs that are not single-rank (for example if there are multiple ranks but combined equal a bomb of jokers)
             // (handled earlier: all-joker-case) - otherwise bombs must be all of same rank, already handled.
+
+            // 9) Straights (not required by user, so we skip implementing this unless needed)
+            if (cards.Count >= 5 && IsStraight(cards))
+                return new MoveClassification { Kind = MoveKind.Straight, PrimaryRank = cards.Max(c => c.Rank), CountPrimary = cards.Count };
 
             // Choose best candidate by a priority comparator
             if (candidates.Count == 0)
@@ -264,20 +138,31 @@ namespace OpenDDZ.DDZAnalyzer
         {
             int Prio(MoveKind k)
             {
-                return k switch
+                switch (k)
                 {
-                    MoveKind.Bomb => 9,
-                    MoveKind.Plane => 8,
-                    MoveKind.FourWithTwoPairs => 7,
-                    MoveKind.FourWithTwoSingles => 7,
-                    MoveKind.ThreeWithPair => 6,
-                    MoveKind.ThreeWithOne => 6,
-                    MoveKind.ConsecutivePairs => 5,
-                    MoveKind.Triplet => 4,
-                    MoveKind.Pair => 3,
-                    MoveKind.Single => 2,
-                    _ => 1
-                };
+                    case MoveKind.Bomb:
+                        return 9;
+                    case MoveKind.Plane:
+                        return 8;
+                    case MoveKind.FourWithTwoPairs:
+                        return 7;
+                    case MoveKind.FourWithTwoSingles:
+                        return 7;
+                    case MoveKind.ThreeWithPair:
+                        return 6;
+                    case MoveKind.ThreeWithOne:
+                        return 6;
+                    case MoveKind.ConsecutivePairs:
+                        return 5;
+                    case MoveKind.Triplet:
+                        return 4;
+                    case MoveKind.Pair:
+                        return 3;
+                    case MoveKind.Single:
+                        return 2;
+                    default:
+                        return 1;
+                }
             }
 
             var pa = Prio(a.Kind);
@@ -520,67 +405,5 @@ namespace OpenDDZ.DDZAnalyzer
             };
         }
     }
-
-    // 比较器
-    public static class MoveComparer
-    {
-        // 判断 next 是否能压 prev (True if next beats prev)
-        public static bool CanBeat(Move prev, Move next, RuleSet rules)
-        {
-            var prevC = MoveAnalyzer.Detect(prev, rules);
-            var nextC = MoveAnalyzer.Detect(next, rules);
-
-            if (prevC.Kind == MoveKind.Invalid || nextC.Kind == MoveKind.Invalid) return false;
-
-            // If prev is Bomb:
-            if (prevC.Kind == MoveKind.Bomb)
-            {
-                if (nextC.Kind != MoveKind.Bomb) return false;
-                // both bombs: compare power
-                var p1 = rules.GetBombPower(prevC);
-                var p2 = rules.GetBombPower(nextC);
-                return p2 > p1;
-            }
-            else
-            {
-                // if next is bomb -> it beats any non-bomb
-                if (nextC.Kind == MoveKind.Bomb) return true;
-
-                // same kind?
-                if (prevC.Kind != nextC.Kind) return false;
-
-                // handle per-kind comparison rules:
-                switch (prevC.Kind)
-                {
-                    case MoveKind.Single:
-                    case MoveKind.Pair:
-                    case MoveKind.Triplet:
-                        return (int)nextC.PrimaryRank > (int)prevC.PrimaryRank && nextC.CountPrimary == prevC.CountPrimary;
-                    case MoveKind.ThreeWithOne:
-                    case MoveKind.ThreeWithPair:
-                        // must be same AttachKind and same CountPrimary (3)
-                        if (nextC.AttachKind != prevC.AttachKind || nextC.CountPrimary != prevC.CountPrimary) return false;
-                        return (int)nextC.PrimaryRank > (int)prevC.PrimaryRank;
-                    case MoveKind.ConsecutivePairs:
-                        // same length and higher primary rank
-                        if (nextC.SequenceLength != prevC.SequenceLength) return false;
-                        return (int)nextC.PrimaryRank > (int)prevC.PrimaryRank;
-                    case MoveKind.FourWithTwoPairs:
-                    case MoveKind.FourWithTwoSingles:
-                        // same attachment kind and same 4 size:
-                        if (nextC.AttachKind != prevC.AttachKind || nextC.CountPrimary != prevC.CountPrimary) return false;
-                        return (int)nextC.PrimaryRank > (int)prevC.PrimaryRank;
-                    case MoveKind.Plane:
-                        // same sequence length, same attach kind, compare highest primary
-                        if (nextC.SequenceLength != prevC.SequenceLength) return false;
-                        if (nextC.AttachKind != prevC.AttachKind) return false;
-                        return (int)nextC.PrimaryRank > (int)prevC.PrimaryRank;
-                    default:
-                        return false;
-                }
-            }
-        }
-    }
-
 
 }
