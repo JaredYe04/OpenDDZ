@@ -123,7 +123,7 @@ namespace OpenDDZ.DDZUtils.Players
 
             foreach (var move in allMoves.OrderBy(m => m.Cards.Count).ThenBy(m => m.Cards.Min(c => c.Rank)))
             {
-                if (MoveComparer.CanBeat(lastMove, move, _rules))
+                if (MoveUtils.CanBeat(lastMove, move, _rules))
                 {
                     if (bestMove == null ||
                         move.Cards.Count < bestMove.Cards.Count ||
@@ -220,7 +220,7 @@ namespace OpenDDZ.DDZUtils.Players
                 for (int i = 0; i <= ordered.Count - len; i++)
                 {
                     var seq = ordered.Skip(i).Take(len).ToList();
-                    if (MoveAnalyzer.Detect(new Move(seq), _rules).Kind == MoveKind.Straight)
+                    if (MoveUtils.Detect(new Move(seq), _rules).Kind == MoveKind.Straight)
                         moves.Add(new Move(seq));
                 }
             }
@@ -234,7 +234,7 @@ namespace OpenDDZ.DDZUtils.Players
                     for (int i = 0; i <= pairGroups.Count - len; i++)
                     {
                         var seq = pairGroups.Skip(i).Take(len).SelectMany(p => p).ToList();
-                        if (MoveAnalyzer.Detect(new Move(seq), _rules).Kind == MoveKind.Pair)
+                        if (MoveUtils.Detect(new Move(seq), _rules).Kind == MoveKind.Pair)
                             moves.Add(new Move(seq));
                     }
                 }

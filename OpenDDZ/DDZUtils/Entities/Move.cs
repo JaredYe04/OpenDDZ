@@ -57,12 +57,12 @@ namespace OpenDDZ.DDZUtils.Entities
 
         public static bool operator <(Move m1, Move m2)
         {
-            return MoveComparer.CanBeat(m1, m2,RuleSet.Default);
+            return MoveUtils.CanBeat(m1, m2,RuleSet.Default);
         }
 
         public static bool operator >(Move m1, Move m2)
         {
-            return MoveComparer.CanBeat(m2, m1, RuleSet.Default);
+            return MoveUtils.CanBeat(m2, m1, RuleSet.Default);
         }//todo:不同的牌形是不能比较大小的，因此后面还需要完善
     }
 }

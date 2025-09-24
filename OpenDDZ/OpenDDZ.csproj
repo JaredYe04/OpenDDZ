@@ -63,9 +63,10 @@
     <Compile Include="DDZUtils\Entities\Card.cs" />
     <Compile Include="DDZUtils\Enums\Suit.cs" />
     <Compile Include="DDZUtils\Interfaces\ISerializable.cs" />
+    <Compile Include="DDZUtils\MoveUtils.cs" />
     <Compile Include="DDZUtils\Players\BotPlayer.cs" />
     <Compile Include="DDZUtils\Players\RealPlayer.cs" />
-    <Compile Include="DDZUtils\Shuffle.cs" />
+    <Compile Include="DDZUtils\ShuffleUtils.cs" />
     <Compile Include="DDZUtils\Tests\BasicGameTest.cs" />
     <Compile Include="DDZUtils\Tests\DDZAnalyzerTest.cs" />
     <Compile Include="DDZUtils\Entities\DealerMessage.cs" />
@@ -73,9 +74,7 @@
     <Compile Include="DDZUtils\Interfaces\IDealer.cs" />
     <Compile Include="DDZUtils\Interfaces\IPlayer.cs" />
     <Compile Include="DDZUtils\Entities\Move.cs" />
-    <Compile Include="DDZUtils\MoveAnalyzer.cs" />
     <Compile Include="DDZUtils\Entities\MoveClassification.cs" />
-    <Compile Include="DDZUtils\MoveComparer.cs" />
     <Compile Include="DDZUtils\Enums\MoveKind.cs" />
     <Compile Include="DDZUtils\Enums\Rank.cs" />
     <Compile Include="DDZUtils\Entities\RuleSet.cs" />

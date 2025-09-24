@@ -58,7 +58,7 @@ namespace OpenDDZ.DDZUtils
             static void AssertKind(string move, MoveKind expectedKind, RuleSet rules)
             {
                 var m = new Move(move);
-                var c = MoveAnalyzer.Detect(m, rules);
+                var c = MoveUtils.Detect(m, rules);
                 string moveStr = move.ToString();
                 if (c.Kind != expectedKind)
                 {
@@ -70,7 +70,7 @@ namespace OpenDDZ.DDZUtils
             }
             private static void AssertClassification(Move move, MoveKind expectedKind, Rank expectedMain, RuleSet rules)
             {
-                var c = MoveAnalyzer.Detect(move, rules);
+                var c = MoveUtils.Detect(move, rules);
                 string moveStr = move.ToString();
                 if (c.Kind != expectedKind)
                 {
@@ -199,36 +199,36 @@ namespace OpenDDZ.DDZUtils
                 // 对子比较
                 var p5 = new Move(Rank.Five, Rank.Five);
                 var p6 = new Move(Rank.Six, Rank.Six);
-                Assert(MoveComparer.CanBeat(p5, p6, rules), "pair6 should beat pair5");
+                Assert(MoveUtils.CanBeat(p5, p6, rules), "pair6 should beat pair5");
 
                 // 三张比较
                 var t7 = new Move("777");
                 var t8 = new Move("888");
-                Assert(MoveComparer.CanBeat(t7, t8, rules), "triplet8 > triplet7");
+                Assert(MoveUtils.CanBeat(t7, t8, rules), "triplet8 > triplet7");
 
                 // 非炸弹不能压炸弹
                 var bomb9 = new Move("9999");
-                Assert(MoveComparer.CanBeat(t8, bomb9, rules), "triplet cannot beat bomb");
+                Assert(MoveUtils.CanBeat(t8, bomb9, rules), "triplet cannot beat bomb");
 
                 // 炸弹能压非炸弹
-                Assert(!MoveComparer.CanBeat(bomb9, t8, rules), "bomb should beat triplet");
+                Assert(!MoveUtils.CanBeat(bomb9, t8, rules), "bomb should beat triplet");
 
                 // 炸弹大小比较
                 var bomb4A = new Move(Rank.A, Rank.A, Rank.A, Rank.A);
                 var bomb5K = new Move(Rank.K, Rank.K, Rank.K, Rank.K, Rank.K);
-                Assert(MoveComparer.CanBeat(bomb4A, bomb5K, rules), "5炸 > 4炸");
+                Assert(MoveUtils.CanBeat(bomb4A, bomb5K, rules), "5炸 > 4炸");
 
                 // 王炸与普通炸弹比较
                 var doubleJ = new Move(Rank.JokerSmall, Rank.JokerBig);
                 var fiveX = new Move(Rank.Three, Rank.Three, Rank.Three, Rank.Three, Rank.Three);
                 var fourY = new Move(Rank.Four, Rank.Four, Rank.Four, Rank.Four);
-                Assert(!MoveComparer.CanBeat(fiveX, doubleJ, rules), "double joker should not beat 5炸 (per default mapping)");
-                Assert(MoveComparer.CanBeat(fourY, doubleJ, rules), "double joker should beat 4炸 (per default mapping)");
+                Assert(!MoveUtils.CanBeat(fiveX, doubleJ, rules), "double joker should not beat 5炸 (per default mapping)");
+                Assert(MoveUtils.CanBeat(fourY, doubleJ, rules), "double joker should beat 4炸 (per default mapping)");
 
-                Assert(!MoveComparer.CanBeat(new Move("QQQA"), new Move("X"), rules), "单牌不能压三带一！");
+                Assert(!MoveUtils.CanBeat(new Move("QQQA"), new Move("X"), rules), "单牌不能压三带一！");
 
                 //大王炸与小王炸比较
-                Assert(MoveComparer.CanBeat(new Move("XX"), new Move("YY"), rules), "bigger joker should beat small joker");
+                Assert(MoveUtils.CanBeat(new Move("XX"), new Move("YY"), rules), "bigger joker should beat small joker");
             }
 
             private static void TestSpecialCases()

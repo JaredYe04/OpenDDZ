@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace OpenDDZ.DDZUtils
 {
-    public static class Shuffle
+    public static class ShuffleUtils
     {
 
 

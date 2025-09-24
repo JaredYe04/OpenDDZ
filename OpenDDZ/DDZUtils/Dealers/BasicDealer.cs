@@ -35,7 +35,7 @@ namespace OpenDDZ.DDZUtils.Dealers
         {
             // 初始化牌堆
             _deck = CardUtils.CreateDeck();
-            Shuffle.RandomShuffle(_deck);
+            ShuffleUtils.RandomShuffle(_deck);
 
             // 发牌（假设3人，每人17张，剩3张底牌）
             var initialHands = new Dictionary<IPlayer, List<Card>>();
@@ -85,7 +85,7 @@ namespace OpenDDZ.DDZUtils.Dealers
             if (move != null && move.Cards.Count > 0)
             {
                 var lastMove = LastMove.Item2;
-                if (lastMove == null || MoveComparer.CanBeat(lastMove, move, Rules) || LastMove.Item1 == player)
+                if (lastMove == null || MoveUtils.CanBeat(lastMove, move, Rules) || LastMove.Item1 == player)
                 {
                     // 合法出牌
                     LastMove = (player, move, DateTime.Now);
