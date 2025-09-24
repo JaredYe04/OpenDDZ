@@ -1,11 +1,13 @@
-﻿using System;
+﻿using OpenDDZ.DDZUtils.Entities;
+using OpenDDZ.DDZUtils.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
-namespace OpenDDZ.DDZAnalyzer
+namespace OpenDDZ.DDZUtils
 {
     // 核心判定器
     public static class MoveAnalyzer
@@ -29,7 +31,7 @@ namespace OpenDDZ.DDZAnalyzer
         public static MoveClassification Detect(Move move, RuleSet rules)
         {
             var cards = move.Cards;
-            if (move == null || cards.Count == 0) return new MoveClassification { Kind = MoveKind.Invalid };
+            if (move == null || cards.Count == 0) return new MoveClassification { Kind = MoveKind.None };
 
             // Build counts per rank
             var counts = new Dictionary<Rank, int>();
@@ -50,7 +52,7 @@ namespace OpenDDZ.DDZAnalyzer
             Dictionary<Rank, int> CloneCounts() => counts.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
             // 1) Rocket / Joker bomb: if all cards are jokers (some number)
-            if (jokerTotal > 0 && jokerTotal == total)
+            if (jokerTotal >=2 && jokerTotal == total)//只有王牌个数大于等于2且等于总数才是王炸
             {
                 var primaryRank = Rank.JokerBig;
                 //如果两张都是小王，则PrimaryRank为小王

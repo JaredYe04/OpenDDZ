@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenDDZ.DDZAnalyzer
+namespace OpenDDZ.DDZUtils.Enums
 {
     public enum Rank
     {

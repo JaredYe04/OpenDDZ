@@ -1,11 +1,13 @@
-﻿using OpenDDZ.Utils;
+﻿using OpenDDZ.DDZUtils.Entities;
+using OpenDDZ.DDZUtils.Enums;
+using OpenDDZ.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenDDZ.DDZAnalyzer
+namespace OpenDDZ.DDZUtils
 {
     internal class DDZAnalyzerTest
     {
@@ -185,9 +187,9 @@ namespace OpenDDZ.DDZAnalyzer
                 AssertClassification(new Move(Rank.K, Rank.K, Rank.K, Rank.K, Rank.K), MoveKind.Bomb, Rank.K, rules);
 
                 // 王炸
-                AssertClassification(new Move(Rank.JokerSmall, Rank.JokerBig), MoveKind.Bomb, Rank.JokerBig, rules);
-                AssertClassification(new Move(Rank.JokerSmall, Rank.JokerSmall, Rank.JokerBig), MoveKind.Bomb, Rank.JokerBig, rules);
-                AssertClassification(new Move(Rank.JokerSmall, Rank.JokerSmall, Rank.JokerBig, Rank.JokerBig), MoveKind.Bomb, Rank.JokerBig, rules);
+                AssertClassification(new Move("XY"), MoveKind.Bomb, Rank.JokerBig, rules);
+                AssertClassification(new Move("XX"), MoveKind.Bomb, Rank.JokerSmall, rules);
+                AssertClassification(new Move("XXYY"), MoveKind.Bomb, Rank.JokerBig, rules);
             }
 
             private static void TestMoveComparison()
@@ -222,6 +224,8 @@ namespace OpenDDZ.DDZAnalyzer
                 var fourY = new Move(Rank.Four, Rank.Four, Rank.Four, Rank.Four);
                 Assert(!MoveComparer.CanBeat(fiveX, doubleJ, rules), "double joker should not beat 5炸 (per default mapping)");
                 Assert(MoveComparer.CanBeat(fourY, doubleJ, rules), "double joker should beat 4炸 (per default mapping)");
+
+                Assert(!MoveComparer.CanBeat(new Move("QQQA"), new Move("X"), rules), "单牌不能压三带一！");
 
                 //大王炸与小王炸比较
                 Assert(MoveComparer.CanBeat(new Move("XX"), new Move("YY"), rules), "bigger joker should beat small joker");

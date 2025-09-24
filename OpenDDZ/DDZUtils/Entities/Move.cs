@@ -1,10 +1,11 @@
-﻿using System;
+﻿using OpenDDZ.DDZUtils.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenDDZ.DDZAnalyzer
+namespace OpenDDZ.DDZUtils.Entities
 {
     // 一次出牌（move）
     public class Move
@@ -40,12 +41,28 @@ namespace OpenDDZ.DDZAnalyzer
                     case 'K': Cards.Add(new Card(Rank.K)); break;
                     case 'A': Cards.Add(new Card(Rank.A)); break;
                     case '2': Cards.Add(new Card(Rank.Two)); break;
-                    case 'X': Cards.Add(new Card(Rank.JokerSmall)); break;
-                    case 'Y': Cards.Add(new Card(Rank.JokerBig)); break;
+                    case 'X': Cards.Add(new Card(Rank.JokerSmall,Suit.Joker)); break;
+                    case 'Y': Cards.Add(new Card(Rank.JokerBig, Suit.Joker)); break;
                     default:
                         throw new ArgumentException($"Invalid card character: {c}");
                 }
             }
         }
+
+
+        /// <summary>
+        /// 重载比较运算符，判断两次出牌的大小关系
+        /// </summary>
+        /// 
+
+        public static bool operator <(Move m1, Move m2)
+        {
+            return MoveComparer.CanBeat(m1, m2,RuleSet.Default);
+        }
+
+        public static bool operator >(Move m1, Move m2)
+        {
+            return MoveComparer.CanBeat(m2, m1, RuleSet.Default);
+        }//todo:不同的牌形是不能比较大小的，因此后面还需要完善
     }
 }

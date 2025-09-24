@@ -4,11 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenDDZ.DDZAnalyzer
+namespace OpenDDZ.DDZUtils.Enums
 {
     public enum MoveKind
     {
         Invalid,// 无效
+        None,// 空
         Single,// 单张
         Pair,// 对子
         Triplet,// 三张

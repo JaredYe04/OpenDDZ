@@ -1,10 +1,11 @@
-﻿using System;
+﻿using OpenDDZ.DDZUtils.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenDDZ.DDZAnalyzer
+namespace OpenDDZ.DDZUtils.Entities
 {
     //包含完整的对一个Move的分类结果
     public class MoveClassification

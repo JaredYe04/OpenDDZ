@@ -1,10 +1,11 @@
-﻿using System;
+﻿using OpenDDZ.DDZUtils.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenDDZ.DDZAnalyzer
+namespace OpenDDZ.DDZUtils.Entities
 {
     // 规则集：包含炸弹比较方法与序列允许范围等
     public class RuleSet

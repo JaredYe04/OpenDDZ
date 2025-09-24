@@ -1,10 +1,12 @@
-﻿using System;
+﻿using OpenDDZ.DDZUtils.Entities;
+using OpenDDZ.DDZUtils.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenDDZ.DDZAnalyzer
+namespace OpenDDZ.DDZUtils
 {
     // 比较器
     public static class MoveComparer
@@ -12,10 +14,17 @@ namespace OpenDDZ.DDZAnalyzer
         // 判断 next 是否能压 prev (True if next beats prev)
         public static bool CanBeat(Move prev, Move next, RuleSet rules)
         {
-
+            
             var prevC = MoveAnalyzer.Detect(prev, rules);
             var nextC = MoveAnalyzer.Detect(next, rules);
-
+            if(prevC.Kind == MoveKind.None)
+            {
+                return true;
+            }
+            if (nextC.Kind == MoveKind.Invalid|| nextC.Kind == MoveKind.None)
+            {
+                return false;
+            }
             if (prevC.Kind == MoveKind.Invalid || nextC.Kind == MoveKind.Invalid) return false;
 
 
