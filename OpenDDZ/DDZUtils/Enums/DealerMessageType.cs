@@ -16,6 +16,7 @@ namespace OpenDDZ.DDZUtils.Enums
         PlayRejected,
         PlayerPassed,
         Broadcast,//广播消息
+        RequestCallLandlord,//请求叫地主
         Error,
         Info,
         RequestPlay//请求当前玩家出牌

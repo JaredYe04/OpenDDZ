@@ -31,10 +31,14 @@ namespace OpenDDZ.DDZUtils.Players
 
         public void RequestPlay(Move move)
         {
-            _dealer?.HandlePlayRequest(this, move);
+            _dealer.OnPlayerMessage(this, new PlayerMessage
+            {
+                Type = PlayerMessageType.Play,
+                Data = move
+            });
         }
 
-        public void OnMessage(DealerMessage message)
+        public PlayerMessage OnDealerMessage(DealerMessage message)
         {
             if (message.Type == DealerMessageType.RequestPlay)
             {
@@ -47,12 +51,28 @@ namespace OpenDDZ.DDZUtils.Players
                 }
                 var myMove = CardUtils.FindGreedyBestMove(_hand,lastMove,_rules);
                 RequestPlay(myMove);
+                
                 //Console.WriteLine($"[{Id}] 自动出牌: {(myMove == null || myMove.Cards.Count == 0 ? "pass" : CardUtils.FormatCards(myMove.Cards))}");
             }
             else if (message.Type == DealerMessageType.Info)
             {
+                
                 //Console.WriteLine($"[{Id}] {message.Content}");
             }
+            else if (message.Type == DealerMessageType.RequestCallLandlord)
+            {
+                var options = (string[])message.Data;
+                //作为AI，这里简单随机叫地主,todo
+                var rand = new Random((int)DateTime.Now.Ticks);
+                var choice = options[rand.Next(options.Length)];
+                return new PlayerMessage
+                {
+                    Type = PlayerMessageType.CallLandlord,
+                    Data = choice
+                };
+            }
+
+            return new PlayerMessage { Type = PlayerMessageType.Ack };
         }
 
         public void SetDealer(IDealer dealer)

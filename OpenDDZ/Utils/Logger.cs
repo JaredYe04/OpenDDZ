@@ -58,7 +58,7 @@ namespace OpenDDZ.Utils
                     break;
             }
             prefix = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {prefix}";
-            Console.WriteLine($"{prefix} {message}");
+            //Console.WriteLine($"{prefix} {message}");
             try
             {
                 System.IO.File.AppendAllText(Instance.loggerFileName, $"{prefix} {message}{Environment.NewLine}");

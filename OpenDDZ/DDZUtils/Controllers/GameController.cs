@@ -56,14 +56,9 @@ namespace OpenDDZ.DDZUtils.Controllers
 
                     while (true)
                     {
-                        var input = _io.GetMoveInput(currentPlayer);
-                        if (string.IsNullOrWhiteSpace(input) || input.Trim().ToLower() == "pass")
-                        {
-                            currentPlayer.RequestPlay(null);
-                            break;
-                        }
-                        var move = MoveUtils.ParseMove(input, currentPlayer.GetHandCards());
-                        if (move == null)
+                        var move = _io.GetMoveInput(currentPlayer);
+
+                        if (!MoveUtils.ValidateMove(move, currentPlayer.GetHandCards()))
                         {
                             _io.ShowError("输入格式错误或牌不在手牌中，请重新输入。");
                             continue;

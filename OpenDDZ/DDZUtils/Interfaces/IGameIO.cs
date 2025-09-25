@@ -15,8 +15,10 @@ namespace OpenDDZ.DDZUtils.Interfaces
         void ShowMessage(string message);
         void ShowHand(IPlayer player);
         void ShowLastMove(IPlayer player, Move move, IPlayer lastPlayer);
-        string GetMoveInput(IPlayer player);
+        Move GetMoveInput(IPlayer player);// 出牌输入
+        string GetBidInput(IPlayer player);// 叫地主输入
         void ShowError(string message);
         void ShowGameEnd(IPlayer winner);
+
     }
 }

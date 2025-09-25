@@ -17,30 +17,43 @@ namespace OpenDDZ.DDZUtils
         /// <param name="input"></param>
         /// <param name="hand"></param>
         /// <returns></returns>
-        public static Move ParseMove(string input, IList<Card> hand)
+        public static Move ParseMove(string input)
         {
             var parts = input.Split(new[] { ',', ' ', ';' }, System.StringSplitOptions.RemoveEmptyEntries);
             var selected = new List<Card>();
             foreach (var part in parts)
             {
-                var card = ParseCard(part.Trim(), hand);
-                if (card == null) return null;
-                selected.Add(card);
-            }
-            // 检查是否都在手牌
-            foreach (var card in selected)
-            {
-                if (!hand.Any(h => h.Suit == card.Suit && h.Rank == card.Rank))
-                    return null;
+                try
+                {
+                    var card = ParseCard(part.Trim());
+                    selected.Add(card);
+                }
+                catch (Exception ex)
+                {
+                    throw new ArgumentException($"无法解析的牌: {part}", ex);
+                }
+
             }
             return new Move(selected);
-        }
 
-        private static Card ParseCard(string str, IList<Card> hand)
+        }
+        public static bool ValidateMove(Move move, IList<Card> hand)
+        {
+            if (move == null) return true;
+
+            // 检查是否都在手牌
+            foreach (var card in move.Cards)
+            {
+                if (!hand.Any(h => h.Suit == card.Suit && h.Rank == card.Rank))
+                    return false;
+            }
+            return true;
+        }
+        private static Card ParseCard(string str)
         {
             str = str.Replace(" ", "").Replace("红桃", "H").Replace("黑桃", "S").Replace("方片", "D").Replace("梅花", "C");
-            if (str == "小王") return hand.FirstOrDefault(c => c.Rank == Rank.JokerSmall);
-            if (str == "大王") return hand.FirstOrDefault(c => c.Rank == Rank.JokerBig);
+            if (str == "小王") return new Card(Rank.JokerSmall, Suit.Joker);
+            if (str == "大王") return new Card(Rank.JokerBig, Suit.Joker);
 
             Suit? suit = null;
             Rank? rank = null;
@@ -49,6 +62,9 @@ namespace OpenDDZ.DDZUtils
             else if (str.StartsWith("S")) suit = Suit.Spade;
             else if (str.StartsWith("D")) suit = Suit.Diamond;
             else if (str.StartsWith("C")) suit = Suit.Club;
+
+            if (!suit.HasValue || str.Length < 2)
+                throw new ArgumentException($"无法解析的牌: {str}");
 
             var rankStr = str.Substring(1).ToUpper();
             switch (rankStr)
@@ -66,9 +82,9 @@ namespace OpenDDZ.DDZUtils
                 case "4": rank = Rank.Four; break;
                 case "3": rank = Rank.Three; break;
                 case "2": rank = Rank.Two; break;
-                default: return null;
+                default: throw new ArgumentException($"无法解析的牌: {str}");
             }
-            return hand.FirstOrDefault(c => c.Suit == suit && c.Rank == rank);
+            return rank.HasValue ? new Card(rank.Value, suit.Value) : throw new ArgumentException($"无法解析的牌: {str}"); ;
         }
         /// <summary>
         /// 判定一次出牌的牌型
@@ -83,16 +99,15 @@ namespace OpenDDZ.DDZUtils
         /// </summary>
         public static bool CanBeat(Move prev, Move next, RuleSet rules)
         {
+            if(prev==null)prev=new Move(new List<Card>());
+            if(next==null)next=new Move(new List<Card>());
             var prevC = Detect(prev, rules);
             var nextC = Detect(next, rules);
-
-            if (prevC.Kind == MoveKind.None)
-                return true;
-            if (nextC.Kind == MoveKind.Invalid || nextC.Kind == MoveKind.None)
-                return false;
             if (prevC.Kind == MoveKind.Invalid || nextC.Kind == MoveKind.Invalid)
                 return false;
-
+            //要首先判断是否无效，无效的牌型不能压任何牌，也不能被任何牌压
+            if (prevC.Kind == MoveKind.None)
+                return true;
             // If prev is Bomb:
             if (prevC.Kind == MoveKind.Bomb)
             {

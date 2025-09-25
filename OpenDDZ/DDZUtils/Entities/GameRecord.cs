@@ -12,7 +12,7 @@ namespace OpenDDZ.DDZUtils.Entities
     public class GameRecord :ISerializable
     {
         public Guid Id { get; set; } = Guid.NewGuid();
-
+        public GameConfig Config { get; set; }
         public string Name { get; set; }
         public DateTime StartTime { get; set; } = DateTime.UtcNow;
         public DateTime? EndTime { get; set; }

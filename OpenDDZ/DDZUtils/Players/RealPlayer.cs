@@ -1,4 +1,5 @@
 ﻿using OpenDDZ.DDZUtils.Entities;
+using OpenDDZ.DDZUtils.Enums;
 using OpenDDZ.DDZUtils.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -21,11 +22,12 @@ namespace OpenDDZ.DDZUtils.Players
         private List<Card> _hand = new List<Card>();
         private IDealer _dealer;
 
-        public RealPlayer(string name, string email="")
+        protected IGameIO GameIO { get; set; }// 用于与玩家交互的接口，因为可能玩家是用不同的方式连接的
+        public RealPlayer(string name, IGameIO gameIO)
         {
             Id = Guid.NewGuid().ToString();
             Name = name;
-            Email = email;
+            GameIO = gameIO;
             Coins = 1000; // 初始金币
             RegisterTime = DateTime.UtcNow;
         }
@@ -34,21 +36,46 @@ namespace OpenDDZ.DDZUtils.Players
 
         public void RequestPlay(Move move)
         {
-            _dealer?.HandlePlayRequest(this, move);
+            _dealer.OnPlayerMessage(this, new PlayerMessage
+            {
+                Type = PlayerMessageType.Play,
+                Data = move
+            });
         }
 
-        public virtual void OnMessage(DealerMessage message)
+        public PlayerMessage OnDealerMessage(DealerMessage message)
         {
-            Console.WriteLine($"[RealPlayer {Name}] 收到消息: {message.Type} - {message.Content}");
-            //todo：这里可以触发UI更新等逻辑，目前仅打印日志
+            switch (message.Type)
+            {
+                case DealerMessageType.Info:
+                    GameIO.ShowMessage(message.Content);
+                    break;
+                case DealerMessageType.Error:
+                    GameIO.ShowError(message.Content);
+                    break;
+                case DealerMessageType.RequestPlay:
+                    // 由GameController主循环处理
+                    break;
+                case DealerMessageType.RequestCallLandlord:
+                    var call = GameIO.GetBidInput(this);
+                    return new PlayerMessage
+                    {
+                        Type = PlayerMessageType.CallLandlord,
+                        Data = call
+                    };
+                default:
+                    GameIO.ShowError(message.Content);
+                    break;
+            }
+            return new PlayerMessage { Type = PlayerMessageType.Ack };
         }
-
         public void SetDealer(IDealer dealer) => _dealer = dealer;
 
         public void ReceiveCards(IEnumerable<Card> cards)
         {
             _hand.AddRange(cards);
         }
+
     }
 
 }

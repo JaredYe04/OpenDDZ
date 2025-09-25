@@ -34,11 +34,14 @@ namespace OpenDDZ.DDZUtils.Interfaces
         /// <param name="move">玩家要出的牌型。</param>
         void RequestPlay(Move move);
 
+
+
         /// <summary>
-        /// 处理来自发牌者的消息。
+        /// 玩家处理来自庄家的消息，并返回自己的响应（如出牌/叫分等）。
         /// </summary>
-        /// <param name="message">发牌者发送的消息。</param>
-        void OnMessage(DealerMessage message);
+        /// <param name="message">庄家发来的消息</param>
+        /// <returns>玩家的响应消息</returns>
+        PlayerMessage OnDealerMessage(DealerMessage message);
 
         /// <summary>
         /// 设置发牌者实例。

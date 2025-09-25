@@ -36,9 +36,7 @@
   <PropertyGroup>
     <StartupObject>OpenDDZ.DDZUtils.Tests.ConsoleGameTest</StartupObject>
   </PropertyGroup>
-  <PropertyGroup>
-    <NoWin32Manifest>true</NoWin32Manifest>
-  </PropertyGroup>
+  <PropertyGroup />
   <ItemGroup>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
@@ -61,8 +59,10 @@
     <Compile Include="DDZUtils\Dealers\BasicDealer.cs" />
     <Compile Include="DDZUtils\Entities\GameConfig.cs" />
     <Compile Include="DDZUtils\Entities\GameRecord.cs" />
+    <Compile Include="DDZUtils\Entities\PlayerMessage.cs" />
     <Compile Include="DDZUtils\Enums\AttachmentKind.cs" />
     <Compile Include="DDZUtils\Entities\Card.cs" />
+    <Compile Include="DDZUtils\Enums\PlayerMessageType.cs" />
     <Compile Include="DDZUtils\Enums\Suit.cs" />
     <Compile Include="DDZUtils\GameIOs\ConsoleIO.cs" />
     <Compile Include="DDZUtils\Interfaces\IGameIO.cs" />
@@ -84,15 +84,9 @@
     <Compile Include="DDZUtils\Enums\MoveKind.cs" />
     <Compile Include="DDZUtils\Enums\Rank.cs" />
     <Compile Include="DDZUtils\Entities\RuleSet.cs" />
-    <Compile Include="Form1.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Form1.Designer.cs">
-      <DependentUpon>Form1.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utils\Logger.cs" />
+    <Compile Include="Utils\Recorder.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -117,8 +111,6 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="UIUtils\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

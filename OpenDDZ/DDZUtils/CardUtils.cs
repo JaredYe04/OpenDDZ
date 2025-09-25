@@ -16,9 +16,13 @@ namespace OpenDDZ.DDZUtils
         public static string ShowHand(IPlayer player)
         {
             var hand = player.GetHandCards().OrderByDescending(c => (int)c.Rank).ThenByDescending(c => (int)c.Suit).ToList();
-            return $"你的手牌：{FormatCards(hand)}";
+            return $"{player.Name}的手牌：{FormatCards(hand)}";
         }
-
+        public static string ShowHand(IEnumerable<Card> cards)
+        {
+            var hand = cards.OrderByDescending(c => (int)c.Rank).ThenByDescending(c => (int)c.Suit).ToList();
+            return $"{FormatCards(hand)}";
+        }
         public static string FormatCards(IEnumerable<Card> cards)
         {
             return string.Join(" ", cards.OrderByDescending(c => (int)c.Rank).ThenByDescending(c => (int)c.Suit).Select(CardToString));

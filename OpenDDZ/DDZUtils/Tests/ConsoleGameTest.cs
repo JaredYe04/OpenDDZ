@@ -17,13 +17,22 @@ namespace OpenDDZ.DDZUtils.Tests
 
         public static void Main(string[] args)
         {
-
+            int seed = (int)DateTime.Now.Ticks;
+            //var config = new GameConfig
+            //{
+            //    Dealer = new BasicDealer(RuleSet.Default),
+            //    Players = new List<IPlayer> { new ConsoleRealPlayer("玩家1"), new BotPlayer("Bot1"), new BotPlayer("Bot2"), new ConsoleRealPlayer("玩家2") },
+            //    Seed=seed,
+            //    ShuffleMethod = list => { ShuffleUtils.RandomShuffle(list, seed); return list; },
+            //    DeckCount = 2
+            //};
             var config = new GameConfig
             {
                 Dealer = new BasicDealer(RuleSet.Default),
-                Players = new List<IPlayer> { new ConsoleRealPlayer("你", "player@local"), new BotPlayer("Bot1"), new BotPlayer("Bot2") },
-                ShuffleMethod = list => { ShuffleUtils.RandomShuffle(list); return list; },
-                DeckCount = 2
+                Players = new List<IPlayer> { new ConsoleRealPlayer("玩家1"), new BotPlayer("Bot1"), new BotPlayer("Bot2")},
+                Seed = seed,
+                ShuffleMethod = list => { ShuffleUtils.WeakShuffle(list, seed); return list; },
+                DeckCount = 1
             };
             var io = new ConsoleIO();
             var controller = new GameController(config, io);

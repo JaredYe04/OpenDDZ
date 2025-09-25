@@ -65,6 +65,14 @@ namespace OpenDDZ.DDZUtils.Interfaces
         /// </summary>
         /// <returns></returns>
         int GetCurrentPlayerIndex();
+
+
+        /// <summary>
+        /// 处理玩家发来的消息（如出牌、叫分等），事件处理机制。
+        /// </summary>
+        /// <param name="player">发送消息的玩家</param>
+        /// <param name="message">玩家消息</param>
+        void OnPlayerMessage(IPlayer player, PlayerMessage message);
     }
 
 }
