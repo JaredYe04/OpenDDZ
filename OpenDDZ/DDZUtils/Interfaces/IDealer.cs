@@ -26,7 +26,7 @@ namespace OpenDDZ.DDZUtils.Interfaces
         /// <summary>
         /// 开始新的一局，负责发牌、确定地主、初始化状态
         /// </summary>
-        void StartGame();
+        void StartGame(GameConfig config);
 
         /// <summary>
         /// 给指定玩家发牌

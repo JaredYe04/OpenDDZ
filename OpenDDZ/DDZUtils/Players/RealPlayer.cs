@@ -12,7 +12,7 @@ namespace OpenDDZ.DDZUtils.Players
     public abstract class RealPlayer : IPlayer
     {
         public string Id { get; set; }
-        public string Username { get; set; }
+        public string Name { get; set; }
         public string Email { get; set; }
         public int Coins { get; set; }
         public DateTime RegisterTime { get; set; }
@@ -21,10 +21,10 @@ namespace OpenDDZ.DDZUtils.Players
         private List<Card> _hand = new List<Card>();
         private IDealer _dealer;
 
-        public RealPlayer(string username, string email)
+        public RealPlayer(string name, string email="")
         {
             Id = Guid.NewGuid().ToString();
-            Username = username;
+            Name = name;
             Email = email;
             Coins = 1000; // 初始金币
             RegisterTime = DateTime.UtcNow;
@@ -39,7 +39,7 @@ namespace OpenDDZ.DDZUtils.Players
 
         public virtual void OnMessage(DealerMessage message)
         {
-            Console.WriteLine($"[RealPlayer {Username}] 收到消息: {message.Type} - {message.Content}");
+            Console.WriteLine($"[RealPlayer {Name}] 收到消息: {message.Type} - {message.Content}");
             //todo：这里可以触发UI更新等逻辑，目前仅打印日志
         }
 

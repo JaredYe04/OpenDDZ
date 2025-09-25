@@ -34,7 +34,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>OpenDDZ.DDZUtils.Tests.BasicGameTest</StartupObject>
+    <StartupObject>OpenDDZ.DDZUtils.Tests.ConsoleGameTest</StartupObject>
   </PropertyGroup>
   <PropertyGroup>
     <NoWin32Manifest>true</NoWin32Manifest>
@@ -57,17 +57,23 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DDZUtils\CardUtils.cs" />
+    <Compile Include="DDZUtils\Controllers\GameController.cs" />
     <Compile Include="DDZUtils\Dealers\BasicDealer.cs" />
+    <Compile Include="DDZUtils\Entities\GameConfig.cs" />
     <Compile Include="DDZUtils\Entities\GameRecord.cs" />
     <Compile Include="DDZUtils\Enums\AttachmentKind.cs" />
     <Compile Include="DDZUtils\Entities\Card.cs" />
     <Compile Include="DDZUtils\Enums\Suit.cs" />
+    <Compile Include="DDZUtils\GameIOs\ConsoleIO.cs" />
+    <Compile Include="DDZUtils\Interfaces\IGameIO.cs" />
     <Compile Include="DDZUtils\Interfaces\ISerializable.cs" />
     <Compile Include="DDZUtils\MoveUtils.cs" />
     <Compile Include="DDZUtils\Players\BotPlayer.cs" />
+    <Compile Include="DDZUtils\Players\ConsoleRealPlayer.cs" />
     <Compile Include="DDZUtils\Players\RealPlayer.cs" />
     <Compile Include="DDZUtils\ShuffleUtils.cs" />
     <Compile Include="DDZUtils\Tests\BasicGameTest.cs" />
+    <Compile Include="DDZUtils\Tests\ConsoleGameTest.cs" />
     <Compile Include="DDZUtils\Tests\DDZAnalyzerTest.cs" />
     <Compile Include="DDZUtils\Entities\DealerMessage.cs" />
     <Compile Include="DDZUtils\Enums\DealerMessageType.cs" />

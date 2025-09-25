@@ -9,6 +9,8 @@ using System.Linq;
 
 namespace OpenDDZ.DDZUtils.Tests
 {
+
+    //已废弃，改用ConsoleGameTest
     internal class BasicGameTest
     {
         public static void Run()
@@ -28,7 +30,7 @@ namespace OpenDDZ.DDZUtils.Tests
             dealer.RegisterPlayers(players);
 
             // 开始游戏
-            dealer.StartGame();
+            //dealer.StartGame();
 
             // 主循环
             while (true)
@@ -122,8 +124,7 @@ namespace OpenDDZ.DDZUtils.Tests
 
         private static string GetPlayerName(IPlayer player)
         {
-            if (player is ConsoleRealPlayer rp) return rp.Username;
-            return player.Id;
+            return player.Name;
         }
 
         // 解析用户输入为Move

@@ -153,6 +153,8 @@ namespace OpenDDZ.DDZUtils
                 AssertKind("333444666", MoveKind.Invalid, rules);
                 AssertKind("33344466677", MoveKind.Invalid, rules);
                 AssertKind("3334446667788", MoveKind.Invalid, rules);
+                AssertKind("AAA22234",MoveKind.Invalid, rules); // 无效牌型
+                AssertKind("333444XY", MoveKind.Plane, rules);
 
                 Console.WriteLine("== Full Move Kind Tests Finished ==");
 

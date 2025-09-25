@@ -30,11 +30,18 @@ namespace OpenDDZ.DDZUtils.Dealers
             foreach (var p in _players)
                 p.SetDealer(this);
         }
+        
 
-        public void StartGame()
+        public void StartGame(GameConfig config)
         {
             // 初始化牌堆
             _deck = CardUtils.CreateDeck();
+            int deckCount = config.DeckCount;
+            while (deckCount > 1)
+            {
+                _deck.AddRange(CardUtils.CreateDeck());
+                deckCount--;
+            }
             ShuffleUtils.RandomShuffle(_deck);
 
             // 发牌（假设3人，每人17张，剩3张底牌）
@@ -90,8 +97,8 @@ namespace OpenDDZ.DDZUtils.Dealers
                     // 合法出牌
                     LastMove = (player, move, DateTime.Now);
                     RemoveCardsFromHand(player, move.Cards);
-                    Broadcast($"{player.Id} 出牌: {string.Join(",", move.Cards.Select(c => c.ToString()))}");
-                    Broadcast($"{player.Id} 剩余牌数: {player.GetHandCards().Count}");
+                    Broadcast($"{player.Name} 出牌: {string.Join(",", move.Cards.Select(c => c.ToString()))}");
+                    Broadcast($"{player.Name} 剩余牌数: {player.GetHandCards().Count}");
 
                     // 记录本次出牌
                     CurrentGame?.Moves.Add((player, move, DateTime.Now));
@@ -99,7 +106,7 @@ namespace OpenDDZ.DDZUtils.Dealers
                     // 判断是否结束
                     if (player.GetHandCards().Count == 0)
                     {
-                        Broadcast($"{player.Id} 已出完所有牌，游戏结束！");
+                        Broadcast($"{player.Name} 已出完所有牌，游戏结束！");
                         CurrentGame.EndTime = DateTime.Now;
                         CalculateScores();
                         LogGameRecord();
@@ -124,8 +131,8 @@ namespace OpenDDZ.DDZUtils.Dealers
             else
             {
                 // 选择不出
-                Broadcast($"{player.Id} 选择不出牌");
-                Broadcast($"{player.Id} 剩余牌数: {player.GetHandCards().Count}");
+                Broadcast($"{player.Name} 选择不出牌");
+                Broadcast($"{player.Name} 剩余牌数: {player.GetHandCards().Count}");
 
                 // 记录本次操作（pass）
                 CurrentGame?.Moves.Add((player, null, DateTime.Now));

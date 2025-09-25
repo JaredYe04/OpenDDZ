@@ -12,6 +12,65 @@ namespace OpenDDZ.DDZUtils
     public static class MoveUtils
     {
         /// <summary>
+        /// 解析玩家输入的字符串为一个 Move 对象，并验证这些牌是否在玩家手牌中
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="hand"></param>
+        /// <returns></returns>
+        public static Move ParseMove(string input, IList<Card> hand)
+        {
+            var parts = input.Split(new[] { ',', ' ', ';' }, System.StringSplitOptions.RemoveEmptyEntries);
+            var selected = new List<Card>();
+            foreach (var part in parts)
+            {
+                var card = ParseCard(part.Trim(), hand);
+                if (card == null) return null;
+                selected.Add(card);
+            }
+            // 检查是否都在手牌
+            foreach (var card in selected)
+            {
+                if (!hand.Any(h => h.Suit == card.Suit && h.Rank == card.Rank))
+                    return null;
+            }
+            return new Move(selected);
+        }
+
+        private static Card ParseCard(string str, IList<Card> hand)
+        {
+            str = str.Replace(" ", "").Replace("红桃", "H").Replace("黑桃", "S").Replace("方片", "D").Replace("梅花", "C");
+            if (str == "小王") return hand.FirstOrDefault(c => c.Rank == Rank.JokerSmall);
+            if (str == "大王") return hand.FirstOrDefault(c => c.Rank == Rank.JokerBig);
+
+            Suit? suit = null;
+            Rank? rank = null;
+
+            if (str.StartsWith("H")) suit = Suit.Heart;
+            else if (str.StartsWith("S")) suit = Suit.Spade;
+            else if (str.StartsWith("D")) suit = Suit.Diamond;
+            else if (str.StartsWith("C")) suit = Suit.Club;
+
+            var rankStr = str.Substring(1).ToUpper();
+            switch (rankStr)
+            {
+                case "A": rank = Rank.A; break;
+                case "K": rank = Rank.K; break;
+                case "Q": rank = Rank.Q; break;
+                case "J": rank = Rank.J; break;
+                case "10": rank = Rank.Ten; break;
+                case "9": rank = Rank.Nine; break;
+                case "8": rank = Rank.Eight; break;
+                case "7": rank = Rank.Seven; break;
+                case "6": rank = Rank.Six; break;
+                case "5": rank = Rank.Five; break;
+                case "4": rank = Rank.Four; break;
+                case "3": rank = Rank.Three; break;
+                case "2": rank = Rank.Two; break;
+                default: return null;
+            }
+            return hand.FirstOrDefault(c => c.Suit == suit && c.Rank == rank);
+        }
+        /// <summary>
         /// 判定一次出牌的牌型
         /// </summary>
         public static MoveClassification Detect(Move move, RuleSet rules)
@@ -228,9 +287,10 @@ namespace OpenDDZ.DDZUtils
             public static List<MoveClassification> DetectPlanes(Dictionary<Rank, int> counts, int total, RuleSet rules)
             {
                 var results = new List<MoveClassification>();
+                // 过滤掉2和王，三个2/王不能作为飞机主体
                 var candidateRanks = counts.Where(kvp => kvp.Value >= 3)
                     .Select(kvp => kvp.Key)
-                    .Where(r => rules.AllowSequencesWithTwoOrJoker || (r != Rank.Two && r != Rank.JokerSmall && r != Rank.JokerBig))
+                    .Where(r => r != Rank.Two && r != Rank.JokerSmall && r != Rank.JokerBig)
                     .OrderBy(r => (int)r)
                     .ToList();
                 if (candidateRanks.Count < 2) return results;
@@ -249,6 +309,10 @@ namespace OpenDDZ.DDZUtils
                         if (!cons) continue;
                         int len = j - i + 1;
                         var seqRanks = ordinals.Skip(i).Take(len).Select(x => (Rank)x).ToList();
+                        // 主体不能包含2和王
+                        if (seqRanks.Any(r => r == Rank.Two || r == Rank.JokerSmall || r == Rank.JokerBig))
+                            continue;
+
                         var leftover = counts.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                         bool ok = true;
                         foreach (var r in seqRanks)
@@ -259,6 +323,7 @@ namespace OpenDDZ.DDZUtils
                         if (!ok) continue;
 
                         int leftoverSum = leftover.Values.Sum();
+                        // 带牌可以包含大小王
                         if (leftoverSum == 0)
                         {
                             results.Add(new MoveClassification

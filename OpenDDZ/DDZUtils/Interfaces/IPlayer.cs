@@ -18,6 +18,11 @@ namespace OpenDDZ.DDZUtils.Interfaces
         string Id { get; set; }
 
         /// <summary>
+        /// 获取或设置玩家的显示名称。
+        /// </summary>
+        string Name { get; set; }
+
+        /// <summary>
         /// 获取玩家当前手牌列表。
         /// </summary>
         /// <returns>玩家手中的牌列表，只读。</returns>
