@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,6 +19,7 @@ namespace OpenDDZ.DDZUtils.Enums
         RequestCallLandlord,//请求叫地主
         Error,
         Info,
-        RequestPlay//请求当前玩家出牌
+        RequestPlay,//请求当前玩家出牌
+        RequestDiscard//后手弃牌（四人模式）
     }
 }

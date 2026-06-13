@@ -1,40 +1,70 @@
-﻿using OpenDDZ.DDZUtils.Controllers;
-using OpenDDZ.DDZUtils.Dealers;
-using OpenDDZ.DDZUtils.Entities;
+using OpenDDZ;
+using OpenDDZ.DDZUtils.Controllers;
 using OpenDDZ.DDZUtils.GameIOs;
+using OpenDDZ.DDZUtils.GameIOs.Tui;
 using OpenDDZ.DDZUtils.Interfaces;
 using OpenDDZ.DDZUtils.Players;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace OpenDDZ.DDZUtils.Tests
 {
     internal class ConsoleGameTest
     {
-
         public static void Main(string[] args)
         {
-            int seed = (int)DateTime.Now.Ticks;
-            //var config = new GameConfig
-            //{
-            //    Dealer = new BasicDealer(RuleSet.Default),
-            //    Players = new List<IPlayer> { new ConsoleRealPlayer("玩家1"), new BotPlayer("Bot1"), new BotPlayer("Bot2"), new ConsoleRealPlayer("玩家2") },
-            //    Seed=seed,
-            //    ShuffleMethod = list => { ShuffleUtils.RandomShuffle(list, seed); return list; },
-            //    DeckCount = 2
-            //};
-            var config = new GameConfig
+            try
             {
-                Dealer = new BasicDealer(RuleSet.Default),
-                Players = new List<IPlayer> { new ConsoleRealPlayer("玩家1"), new BotPlayer("Bot1"), new BotPlayer("Bot2")},
-                Seed = seed,
-                ShuffleMethod = list => { ShuffleUtils.WeakShuffle(list, seed); return list; },
-                DeckCount = 1
-            };
+                Console.OutputEncoding = Encoding.UTF8;
+                Console.InputEncoding = Encoding.UTF8;
+            }
+            catch { /* 部分终端不支持 */ }
+            if (args != null && args.Any(a => a == "--stdio"))
+            {
+                ProgramStdio.RunStdioMode();
+                return;
+            }
+            if (args != null && args.Any(a => a == "--benchmark"))
+            {
+                BotBenchmarkTest.Run(args);
+                return;
+            }
+            if (args != null && args.Any(a => a == "--generate-dataset" || a == "--merge-shards"))
+            {
+                TrainingDataCli.Run(args);
+                return;
+            }
+            if (args != null && args.Any(a => a == "--self-play"))
+            {
+                SelfPlayCli.Run(args);
+                return;
+            }
+            if (args != null && args.Any(a => a == "--mine-selfplay"))
+            {
+                SelfPlayMinerCli.Run(args);
+                return;
+            }
+            if (args != null && args.Any(a => a == "--classic"))
+            {
+                RunClassicMode();
+                return;
+            }
+
+            TuiApp.Run();
+        }
+
+        private static void RunClassicMode()
+        {
+            var setup = new ConsoleGameSetup();
+            if (!setup.RunInteractive())
+            {
+                Console.WriteLine("已取消。");
+                return;
+            }
+
             var io = new ConsoleIO();
+            var config = setup.BuildConfig(io);
             var controller = new GameController(config, io);
             controller.StartGame();
             controller.RunGameLoop();

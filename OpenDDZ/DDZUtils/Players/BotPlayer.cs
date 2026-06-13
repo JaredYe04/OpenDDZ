@@ -1,5 +1,6 @@
 using OpenDDZ.DDZUtils.Entities;
 using OpenDDZ.DDZUtils.Interfaces;
+using OpenDDZ.DDZUtils.Players.Strategies;
 using OpenDDZ.DDZUtils.Enums;
 using System;
 using System.Collections.Generic;
@@ -10,21 +11,29 @@ namespace OpenDDZ.DDZUtils.Players
     [Serializable]
     public class BotPlayer : IPlayer
     {
-
         public string Id { get; set; }
         public string Name { get; set; } = "Bot";
         private List<Card> _hand = new List<Card>();
         private IDealer _dealer;
-        private RuleSet _rules=RuleSet.Default;
+        private readonly IBotStrategy _strategy;
 
-        public BotPlayer()
+        public IBotStrategy Strategy => _strategy;
+
+        public BotPlayer() : this(new GreedyBotStrategy()) { }
+
+        public BotPlayer(string name) : this(name, new GreedyBotStrategy()) { }
+
+        public BotPlayer(IBotStrategy strategy)
         {
             Id = Guid.NewGuid().ToString();
+            _strategy = strategy ?? new GreedyBotStrategy();
         }
-        public BotPlayer(string name)
+
+        public BotPlayer(string name, IBotStrategy strategy)
         {
             Id = Guid.NewGuid().ToString();
             Name = name;
+            _strategy = strategy ?? new GreedyBotStrategy();
         }
 
         public IList<Card> GetHandCards() => _hand;
@@ -40,36 +49,42 @@ namespace OpenDDZ.DDZUtils.Players
 
         public PlayerMessage OnDealerMessage(DealerMessage message)
         {
+            var ctx = BotDecisionContext.From(this, _dealer);
+
             if (message.Type == DealerMessageType.RequestPlay)
             {
-                // 自动出牌
-                var lastMove = _dealer.LastMove.Item2;
-                if (_dealer.LastMove.Item1==this)
-                {
-                    //说明没人能接自己的牌，出任意牌
-                    lastMove = null;
-                }
-                var myMove = CardUtils.FindGreedyBestMove(_hand,lastMove,_rules);
+                var myMove = _strategy.ChoosePlay(ctx);
                 RequestPlay(myMove);
-                
-                //Console.WriteLine($"[{Id}] 自动出牌: {(myMove == null || myMove.Cards.Count == 0 ? "pass" : CardUtils.FormatCards(myMove.Cards))}");
             }
             else if (message.Type == DealerMessageType.Info)
             {
-                
-                //Console.WriteLine($"[{Id}] {message.Content}");
             }
             else if (message.Type == DealerMessageType.RequestCallLandlord)
             {
-                var options = (string[])message.Data;
-                //作为AI，这里简单随机叫地主,todo
-                var rand = new Random((int)DateTime.Now.Ticks);
-                var choice = options[rand.Next(options.Length)];
+                string[] options;
+                int highestBid = 0;
+                if (message.Data is object[] arr && arr.Length >= 2)
+                {
+                    options = arr[0] as string[];
+                    if (arr[1] is int hb) highestBid = hb;
+                }
+                else
+                {
+                    options = message.Data as string[];
+                }
+                ctx.HighestBid = highestBid;
+                ctx.BidOptions = options;
+                var choice = _strategy.ChooseBid(ctx, options);
                 return new PlayerMessage
                 {
                     Type = PlayerMessageType.CallLandlord,
                     Data = choice
                 };
+            }
+            else if (message.Type == DealerMessageType.RequestDiscard)
+            {
+                var card = _strategy.ChooseDiscard(ctx);
+                return new PlayerMessage { Type = PlayerMessageType.Discard, Data = card };
             }
 
             return new PlayerMessage { Type = PlayerMessageType.Ack };
@@ -85,6 +100,9 @@ namespace OpenDDZ.DDZUtils.Players
             _hand.AddRange(cards);
         }
 
-
+        public void ResetHand()
+        {
+            _hand.Clear();
+        }
     }
 }

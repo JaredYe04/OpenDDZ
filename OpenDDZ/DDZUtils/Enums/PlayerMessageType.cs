@@ -3,10 +3,11 @@ namespace OpenDDZ.DDZUtils.Enums
 {
     public enum PlayerMessageType
     {
-        Ack,          // 确认收到
-        Play,         // 出牌
-        Pass,         // 不出
-        CallLandlord, // 叫地主，叫分等
-        Other         // 其他
+        Ack,          // 确锟斤拷锟秸碉拷
+        Play,         // 锟斤拷锟斤拷
+        Pass,         // 锟斤拷锟斤拷
+        CallLandlord, // ???????
+        Discard,      // ??????????
+        Other
     }
 }

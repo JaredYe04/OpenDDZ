@@ -1,31 +1,41 @@
 using OpenDDZ.DDZUtils.Entities;
 using OpenDDZ.DDZUtils.Interfaces;
 using OpenDDZ.DDZUtils.Enums;
+using OpenDDZ.DDZUtils.Players;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenDDZ.Utils;
-using System.Drawing.Text;
 
 namespace OpenDDZ.DDZUtils.Dealers
 {
     public class BasicDealer : IDealer
     {
+        private static readonly string[] CallOptions = { "1åˆ†", "2åˆ†", "3åˆ†", "ä¸å«" };
+        private const string PassChoice = "ä¸å«";
+
         public GameRecord CurrentGame { get; private set; }
         public (IPlayer, Move, DateTime) LastMove { get; private set; }
         public RuleSet Rules { get; private set; }
         public bool EnableTimer => false;
 
         private List<IPlayer> _players = new List<IPlayer>();
-        private IPlayer landLord = null; // µØÖ÷Íæ¼Ò
+        private IPlayer landLord = null;
+        private int _landlordIndex = -1;
         private int _currentPlayerIndex = 0;
         private List<Card> _deck = new List<Card>();
         private int _scoreTimes = 0;
         private GameConfig _config;
+
         public BasicDealer(RuleSet rules)
         {
             Rules = rules;
         }
+
+        public IReadOnlyList<IPlayer> Players => _players;
+        public int LandlordIndex => _landlordIndex;
+
+        public int GetPlayerIndex(IPlayer player) => _players.IndexOf(player);
 
         public void RegisterPlayers(IEnumerable<IPlayer> players)
         {
@@ -34,11 +44,9 @@ namespace OpenDDZ.DDZUtils.Dealers
                 p.SetDealer(this);
         }
 
-
         public void StartGame(GameConfig config)
         {
-            Broadcast("ĞÂÓÎÏ·¿ªÊ¼£¡");
-            // ³õÊ¼»¯ÅÆ¶Ñ
+            Broadcast("æ¸¸æˆå¼€å§‹");
             _config = config;
 
             _deck = CardUtils.CreateDeck();
@@ -50,7 +58,6 @@ namespace OpenDDZ.DDZUtils.Dealers
             }
             _config.ShuffleMethod?.Invoke(_deck);
 
-            // ·¢ÅÆ£¬Èç¹ûÊÇn¸±ÅÆ£¬ÔòÁô3nÕÅµ×ÅÆ
             int cardsPerPlayer = (_deck.Count - 3 * config.DeckCount) / _players.Count;
             var initialHands = new Dictionary<IPlayer, List<Card>>();
             foreach (var player in _players)
@@ -61,22 +68,22 @@ namespace OpenDDZ.DDZUtils.Dealers
                 _deck.RemoveRange(0, cardsPerPlayer);
             }
             var bottomCards = _deck.Take(3 * config.DeckCount).ToList();
+            config.AfterDeal?.Invoke();
+
             if (config.EnableLandlord)
             {
-                //ÔÚ½ĞµØÖ÷Ö®Ç°£¬ÏÈ¸øÃ¿¸öÍæ¼Ò¿´×Ô¼ºµÄÊÖÅÆ
                 foreach (var player in _players)
                 {
                     player.OnDealerMessage(new DealerMessage
                     {
                         Type = DealerMessageType.Info,
-                        Content = $"ÄãµÄÊÖÅÆÊÇ: {CardUtils.ShowHand(initialHands[player])}"
+                        Content = $"åˆå§‹æ‰‹ç‰Œ: {CardUtils.ShowHand(initialHands[player])}"
                     });
                 }
                 CallLandlord(bottomCards);
             }
             else
             {
-                //Èç¹û²»½ĞµØÖ÷£¬¾Í°Ñµ×ÅÆÆ½¾ù·¢Íê
                 int idx = 0;
                 foreach (var player in _players)
                 {
@@ -87,37 +94,31 @@ namespace OpenDDZ.DDZUtils.Dealers
                 }
             }
 
-            // ³õÊ¼»¯ÓÎÏ·¼ÇÂ¼
             CurrentGame = new GameRecord
             {
                 StartTime = DateTime.Now,
                 Players = _players,
                 Dealer = this,
                 InitialHands = initialHands,
-                Config = config
+                Config = config,
+                Landlord = _landlordIndex >= 0 ? _players[_landlordIndex] : null
             };
 
-            // Í¨ÖªËùÓĞÍæ¼ÒÓÎÏ·¿ªÊ¼
-            Broadcast("ÓÎÏ·¿ªÊ¼£¬ÒÑ·¢ÅÆ£¡");
-            _currentPlayerIndex = 0;
+            Broadcast("å‡ºç‰Œé˜¶æ®µå¼€å§‹");
+            _currentPlayerIndex = _landlordIndex >= 0 ? _landlordIndex : 0;
             NotifyCurrentPlayer();
         }
+
         private void CallLandlord(List<Card> bottomCards)
         {
-            // ÓĞÈıÖÖ·½Ê½È·¶¨µØÖ÷£ºÒ»ÊÇÖ±½Ó½Ğ3·ÖµÄµ±µØÖ÷£¬¶şÊÇÈı¼Òµ±ÖĞ£¬½Ğ·Ö×î¸ßÕßµ±µØÖ÷£»ÈıÊÇÈı¼Ò¶¼²»½ĞµØÖ÷£¬ÔòµÚÒ»Î»Ëµ»°ÕßÎªµØÖ÷¡£
-
-            //·¢ÅÆ£ºÒ»¸±ÅÆ54ÕÅ£¬Ò»ÈË17ÕÅ£¬Áô3ÕÅ×öµ×ÅÆ£¬ÔÚÈ·¶¨µØÖ÷Ö®Ç°Íæ¼Ò²»ÄÜ¿´µ×ÅÆ4¡£
-            //½ĞÅÆ£º½ĞÅÆ°´³öÅÆµÄË³ĞòÂÖÁ÷½øĞĞ£¬Ã¿ÈËÖ»ÄÜ½ĞÒ»´Î¡£½ĞÅÆÊ±¿ÉÒÔ½Ğ¡°1·Ö¡±£¬¡°2·Ö¡±£¬¡°3·Ö¡±£¬¡°²»½Ğ¡±¡£ºó½ĞÅÆÕßÖ»ÄÜ½Ğ±ÈÇ°ÃæÍæ¼Ò¸ßµÄ·Ö»òÕß²»½Ğ¡£
-            //È·¶¨µØÖ÷£ºÓĞÈıÖÖ·½Ê½È·¶¨µØÖ÷£ºÒ»ÊÇÖ±½Ó½Ğ3·ÖµÄµ±µØÖ÷£¬¶şÊÇÈı¼Òµ±ÖĞ£¬½Ğ·Ö×î¸ßÕßµ±µØÖ÷£»ÈıÊÇÈı¼Ò¶¼²»½ĞµØÖ÷£¬ÔòµÚÒ»Î»Ëµ»°ÕßÎªµØÖ÷¡£
-            //µØÖ÷ÌØÈ¨£ºµØÖ÷ÄÃ×ßµ×ÅÆ£¬²¢ÇÒµØÖ÷ÏÈ³öÅÆ¡£
-
-            //Ëæ»úÑ¡È¡Ò»¸öÍæ¼Ò×÷Îª¿ªÊ¼Íæ¼Ò£¬½øĞĞ½ĞµØÖ÷
+            Broadcast("å«åœ°ä¸»é˜¶æ®µå¼€å§‹");
             int startIndex = new Random(_config.Seed).Next(_players.Count);
             int currentIndex = startIndex;
             IPlayer curentPlayer;
             IPlayer candidate = _players[startIndex];
             int highestBid = 0;
             int cnt = 0;
+
             while (true)
             {
                 ++cnt;
@@ -126,172 +127,139 @@ namespace OpenDDZ.DDZUtils.Dealers
                     _scoreTimes = Math.Max(1, _scoreTimes);
                     AllocateLandLord(candidate, bottomCards);
                     break;
-                    //·ÖÅäµÚÒ»¸öÍæ¼Ò×÷ÎªµØÖ÷
                 }
-                curentPlayer = _players[currentIndex++ % _players.Count];//´ÓÍæ¼ÒÖĞÂÖ×ª
-                Broadcast($"{curentPlayer.Name} ¿ªÊ¼½ĞµØÖ÷");
-                string[] callOptions = { "1·Ö", "2·Ö", "3·Ö", "²»½Ğ" };
+
+                curentPlayer = _players[currentIndex++ % _players.Count];
+                Broadcast($"{curentPlayer.Name} å«åœ°ä¸»ä¸­");
 
                 while (true)
                 {
                     var result = curentPlayer.OnDealerMessage(new DealerMessage
                     {
                         Type = DealerMessageType.RequestCallLandlord,
-                        Content = "ÇëÑ¡Ôñ½Ğ·Ö",
-                        Data = callOptions
+                        Content = "è¯·å«åœ°ä¸»",
+                        Data = new object[] { CallOptions, highestBid }
                     });
                     string choice = result.Data as string;
-                    //´¦Àí½Ğ·Ö½á¹û£¬Èç¹û½Ğ3·Ö£¬Ö±½Ó·ÖÅäµØÖ÷£¬Èç¹û½Ğ2·Ö£¬¼ÇÂ¼×î¸ß·Ö£¬Èç¹û½Ğ1·Ö£¬¼ÇÂ¼×î¸ß·Ö£¬Èç¹û²»½Ğ£¬¼ÌĞøÏÂÒ»¸öÍæ¼Ò
-                    if (result.Type != PlayerMessageType.CallLandlord || result.Data == null || choice == "²»½Ğ")
+
+                    if (result.Type != PlayerMessageType.CallLandlord || result.Data == null || choice == PassChoice)
                     {
-                        //Íæ¼ÒÃ»ÓĞÕıÈ·ÏìÓ¦½ĞµØÖ÷ÇëÇó£¬ÊÓÎª²»½Ğ
-                        Broadcast($"{curentPlayer.Name} Ñ¡Ôñ²»½Ğ");
+                        Broadcast($"{curentPlayer.Name} é€‰æ‹©ä¸å«");
                         break;
                     }
-                    else if (choice == "1·Ö")
+
+                    int bid = ParseBid(choice);
+                    if (bid <= 0)
                     {
-                        if (highestBid >= 1)
+                        Broadcast($"{curentPlayer.Name} é€‰æ‹©ä¸å«");
+                        break;
+                    }
+
+                    if (bid <= highestBid)
+                    {
+                        curentPlayer.OnDealerMessage(new DealerMessage
                         {
-                            //ÎŞĞ§½Ğ·Ö
-                            curentPlayer.OnDealerMessage(new DealerMessage
-                            {
-                                Type = DealerMessageType.Error,
-                                Content = $"½ĞºÅ²»·ûºÏ¹æÔò£¬ÇëÑ¡Ôñ²»½Ğ£¬»òÕß½Ğ±È{highestBid}¸ßµÄ·Ö"
-                            });
-                            continue;
-                        }
-
-                        highestBid = 1;
-                        candidate = curentPlayer;
-                        _scoreTimes += highestBid;
-                        Broadcast($"Íæ¼Ò{curentPlayer.Name}½ĞÁË{choice}£¬×î¸ß·ÖÎª{highestBid}");
-                        break;
+                            Type = DealerMessageType.Error,
+                            Content = $"å«åˆ†å¿…é¡»é«˜äºå½“å‰æœ€é«˜åˆ† {highestBid} åˆ†"
+                        });
+                        continue;
                     }
-                    else if (choice == "2·Ö")
-                    {
-                        if (highestBid >= 2)
-                        {
-                            //ÎŞĞ§½Ğ·Ö
-                            curentPlayer.OnDealerMessage(new DealerMessage
-                            {
-                                Type = DealerMessageType.Error,
-                                Content = $"½ĞºÅ²»·ûºÏ¹æÔò£¬ÇëÑ¡Ôñ²»½Ğ£¬»òÕß½Ğ±È{highestBid}¸ßµÄ·Ö"
-                            });
-                            continue;
-                        }
-                        highestBid = 2;
-                        candidate = curentPlayer;
-                        _scoreTimes += highestBid;
-                        Broadcast($"Íæ¼Ò{curentPlayer.Name}½ĞÁË{choice}£¬×î¸ß·ÖÎª{highestBid}");
-                        break;
-                    }
-                    else if (choice == "3·Ö")
-                    {
 
-
-                        highestBid = 3;
-                        candidate = curentPlayer;
-                        _scoreTimes += highestBid;
-                        Broadcast($"Íæ¼Ò{curentPlayer.Name}½ĞÁË{choice}£¬×î¸ß·ÖÎª{highestBid}");
-                        break;
-                    }
-                    //Ö»ÄÜÑ¡Ôñ²»½Ğ£¬»òÕßÊÇ±ÈhighestBid¸ßµÄ·Ö£¬·ñÔòÖØĞÂ·¢
+                    highestBid = bid;
+                    candidate = curentPlayer;
+                    _scoreTimes += highestBid;
+                    Broadcast($"{curentPlayer.Name} å« {choice}ï¼Œå½“å‰æœ€é«˜ {highestBid} åˆ†");
+                    break;
                 }
             }
         }
+
+        private static int ParseBid(string choice)
+        {
+            if (string.IsNullOrEmpty(choice) || choice == PassChoice) return 0;
+            if (choice.StartsWith("1")) return 1;
+            if (choice.StartsWith("2")) return 2;
+            if (choice.StartsWith("3")) return 3;
+            return 0;
+        }
+
         private void AllocateLandLord(IPlayer landlord, IEnumerable<Card> bottomCards)
         {
-            Broadcast($"{landlord.Name} ³ÉÎªÁËµØÖ÷£¡");
-            Broadcast($"µ×ÅÆÕ¹Ê¾£º{CardUtils.ShowHand(bottomCards)}");
-            //°Ñµ×ÅÆ·¢¸øµØÖ÷
-            var hand = landlord.GetHandCards() as List<Card>;
-            hand.AddRange(bottomCards);
+            landLord = landlord;
+            _landlordIndex = _players.IndexOf(landlord);
+            Broadcast($"{landlord.Name} æˆä¸ºåœ°ä¸»");
+            Broadcast($"åº•ç‰Œ: {CardUtils.ShowHand(bottomCards)}");
+
+            var bottomList = bottomCards.ToList();
+            DealCards(landlord, bottomList);
             landlord.OnDealerMessage(new DealerMessage
             {
                 Type = DealerMessageType.Info,
-                Content = $"Äã»ñµÃÁËµ×ÅÆ: {CardUtils.ShowHand(bottomCards)}"
+                Content = $"è·å¾—åº•ç‰Œ: {CardUtils.ShowHand(bottomCards)}"
             });
-
         }
+
         public void DealCards(IPlayer player, IEnumerable<Card> cards)
         {
-            // Í¨¹ı·´Éä»òÔ¼¶¨µ÷ÓÃ ReceiveCards
             var receiveMethod = player.GetType().GetMethod("ReceiveCards");
             receiveMethod?.Invoke(player, new object[] { cards });
         }
 
         public bool HandlePlayRequest(IPlayer player, Move move)
         {
-            // ÅĞ¶ÏÊÇ·ñµ±Ç°Íæ¼Ò
             if (_players[_currentPlayerIndex] != player)
             {
                 player.OnDealerMessage(new DealerMessage
                 {
                     Type = DealerMessageType.Error,
-                    Content = "²»ÊÇÄãµÄ»ØºÏ£¡"
+                    Content = "ä¸æ˜¯ä½ çš„å›åˆ"
                 });
                 return false;
             }
 
-            // ÅĞ¶Ï³öÅÆÊÇ·ñºÏ·¨
             if (move != null && move.Cards.Count > 0)
             {
                 var lastMove = LastMove.Item2;
                 if (LastMove.Item1 == player)
-                {
-                    //ÈÎÒâÅÆ
                     lastMove = null;
-                }
+
                 if (MoveUtils.CanBeat(lastMove, move, Rules))
                 {
-                    // ºÏ·¨³öÅÆ
                     LastMove = (player, move, DateTime.Now);
                     RemoveCardsFromHand(player, move.Cards);
-                    Broadcast($"{player.Name} ³öÅÆ: {string.Join(",", move.Cards.Select(c => c.ToString()))}");
-                    Broadcast($"{player.Name} Ê£ÓàÅÆÊı: {player.GetHandCards().Count}");
+                    Broadcast($"{player.Name} å‡ºç‰Œ: {string.Join(",", move.Cards.Select(c => c.ToString()))}");
+                    Broadcast($"{player.Name} å‰©ä½™: {player.GetHandCards().Count}");
 
-                    // ¼ÇÂ¼±¾´Î³öÅÆ
                     CurrentGame?.Moves.Add((player, move, DateTime.Now));
 
-                    // ÅĞ¶ÏÊÇ·ñ½áÊø
                     if (player.GetHandCards().Count == 0)
                     {
-                        Broadcast($"{player.Name} ÒÑ³öÍêËùÓĞÅÆ£¬ÓÎÏ·½áÊø£¡");
+                        Broadcast($"{player.Name} å‡ºå®Œç‰Œï¼Œè·èƒœï¼");
                         CurrentGame.EndTime = DateTime.Now;
                         CalculateScores();
                         LogGameRecord();
                         return true;
                     }
 
-                    // ÂÖµ½ÏÂÒ»¸öÍæ¼Ò
                     _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.Count;
                     NotifyCurrentPlayer();
                     return true;
                 }
-                else
+
+                player.OnDealerMessage(new DealerMessage
                 {
-                    player.OnDealerMessage(new DealerMessage
-                    {
-                        Type = DealerMessageType.Error,
-                        Content = "³öÅÆ²»ºÏ·¨£¡"
-                    });
-                    return false;
-                }
+                    Type = DealerMessageType.Error,
+                    Content = "å‡ºç‰Œä¸ç¬¦åˆè§„åˆ™ï¼Œæ— æ³•å‹è¿‡ä¸Šå®¶"
+                });
+                return false;
             }
-            else
-            {
-                // Ñ¡Ôñ²»³ö
-                Broadcast($"{player.Name} Ñ¡Ôñ²»³öÅÆ");
-                Broadcast($"{player.Name} Ê£ÓàÅÆÊı: {player.GetHandCards().Count}");
 
-                // ¼ÇÂ¼±¾´Î²Ù×÷£¨pass£©
-                CurrentGame?.Moves.Add((player, null, DateTime.Now));
-
-                // ÂÖµ½ÏÂÒ»¸öÍæ¼Ò
-                _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.Count;
-                NotifyCurrentPlayer();
-                return true;
-            }
+            Broadcast($"{player.Name} ä¸å‡º");
+            Broadcast($"{player.Name} å‰©ä½™: {player.GetHandCards().Count}");
+            CurrentGame?.Moves.Add((player, null, DateTime.Now));
+            _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.Count;
+            NotifyCurrentPlayer();
+            return true;
         }
 
         public void Broadcast(string message)
@@ -308,7 +276,6 @@ namespace OpenDDZ.DDZUtils.Dealers
 
         public void CalculateScores()
         {
-            // ¼òµ¥ÊµÏÖ£ºÓ®¼ÒµÃ·Ö+1£¬ÆäËû-1
             var winner = LastMove.Item1;
             foreach (var p in _players)
             {
@@ -322,17 +289,11 @@ namespace OpenDDZ.DDZUtils.Dealers
                         coinsProp.SetValue(p, coins - 1);
                 }
             }
-            Broadcast("±¾¾Ö½áËãÍê±Ï£¡");
+            Broadcast("æœ¬å±€ç»“æŸ");
         }
 
         private void NotifyCurrentPlayer()
         {
-            var current = _players[_currentPlayerIndex];
-            current.OnDealerMessage(new DealerMessage
-            {
-                Type = DealerMessageType.RequestPlay,
-                Content = "Çë³öÅÆ",
-            });
         }
 
         private void RemoveCardsFromHand(IPlayer player, IEnumerable<Card> cards)
@@ -340,14 +301,11 @@ namespace OpenDDZ.DDZUtils.Dealers
             var hand = player.GetHandCards() as List<Card>;
             foreach (var card in cards)
             {
-                //ÓÉÓÚcardÊÇĞÂ´´½¨µÄ¶ÔÏó£¬ËùÒÔĞèÒª¸ù¾İ»¨É«ºÍµãÊıÀ´ÒÆ³ı
                 var toRemove = hand.FirstOrDefault(c => c.Suit == card.Suit && c.Rank == card.Rank);
                 if (toRemove != null)
                     hand.Remove(toRemove);
                 else
-                {
-                    throw new Exception("ÊÔÍ¼ÒÆ³ıÍæ¼ÒÊÖÖĞ²»´æÔÚµÄÅÆ£¡");
-                }
+                    throw new Exception("å‡ºç‰Œä¸åœ¨æ‰‹ç‰Œä¸­");
             }
         }
 
@@ -356,21 +314,18 @@ namespace OpenDDZ.DDZUtils.Dealers
             return _currentPlayerIndex;
         }
 
-        // ¼ÇÂ¼¶Ô¾ÖĞÅÏ¢µ½ÈÕÖ¾
         private void LogGameRecord()
         {
             string json = CurrentGame?.Serialize();
             if (!string.IsNullOrEmpty(json))
             {
-                Logger.Instance.Info("¡¾¶Ô¾Ö½áÊø¡¿");
+                Logger.Instance.Info("è®°å½•å¯¹å±€");
                 Recorder.Instance.Record(json);
             }
         }
 
         public void OnPlayerMessage(IPlayer player, PlayerMessage message)
         {
-            // ÊÂ¼ş´¦Àí»úÖÆ£¬¸ù¾İPlayerMessageType´¦Àí
-            // ÀıÈç£º³öÅÆ¡¢½Ğ·Ö¡¢passµÈ
             if (message.Type == PlayerMessageType.Play)
             {
                 var move = message.Data as Move;
@@ -380,7 +335,6 @@ namespace OpenDDZ.DDZUtils.Dealers
             {
                 HandlePlayRequest(player, null);
             }
-            // ÆäËûÀàĞÍÍ¬Àí
         }
     }
 }

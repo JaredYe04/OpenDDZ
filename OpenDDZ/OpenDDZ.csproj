@@ -12,6 +12,7 @@
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
+    <CodePage>65001</CodePage>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -41,7 +42,16 @@
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <Reference Include="NStack, Version=1.1.1.0, Culture=neutral, PublicKeyToken=b1bc8ab4b95b4a4a, processorArchitecture=MSIL">
+      <HintPath>..\packages\NStack.Core.1.1.1\lib\netstandard2.0\NStack.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Terminal.Gui, Version=1.0.0.0, Culture=neutral, PublicKeyToken=e2bd4b710393a695, processorArchitecture=MSIL">
+      <HintPath>..\packages\Terminal.Gui.1.19.0\lib\net472\Terminal.Gui.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Management" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -54,9 +64,29 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DDZUtils\AI\BinaryModelFormat.cs" />
+    <Compile Include="DDZUtils\AI\BotCandidateHelper.cs" />
+    <Compile Include="DDZUtils\AI\BotFeatureExtractor.cs" />
+    <Compile Include="DDZUtils\AI\GameStateRebuilder.cs" />
+    <Compile Include="DDZUtils\AI\PerfectInfoOracle.cs" />
+    <Compile Include="DDZUtils\AI\TreeEnsemblePredictor.cs" />
+    <Compile Include="DDZUtils\AI\CardTracker.cs" />
+    <Compile Include="DDZUtils\AI\ImperfectRolloutEvaluator.cs" />
+    <Compile Include="DDZUtils\AI\FastGameSimulator.cs" />
+    <Compile Include="DDZUtils\GameIOs\NullGameIO.cs" />
+    <Compile Include="DDZUtils\Players\BotDecisionContext.cs" />
+    <Compile Include="DDZUtils\Players\Strategies\GreedyBotStrategy.cs" />
+    <Compile Include="DDZUtils\Players\Strategies\HeuristicBidStrategy.cs" />
+    <Compile Include="DDZUtils\Players\Strategies\IBotStrategy.cs" />
+    <Compile Include="DDZUtils\Players\Strategies\MLBotStrategy.cs" />
+    <Compile Include="DDZUtils\Players\Strategies\MonteCarloBotStrategy.cs" />
+    <Compile Include="DDZUtils\Tests\BotBenchmarkRunner.cs" />
+    <Compile Include="DDZUtils\Tests\BotBenchmarkTest.cs" />
+    <Compile Include="DDZUtils\Tests\BotMatchStats.cs" />
     <Compile Include="DDZUtils\CardUtils.cs" />
     <Compile Include="DDZUtils\Controllers\GameController.cs" />
     <Compile Include="DDZUtils\Dealers\BasicDealer.cs" />
+    <Compile Include="DDZUtils\Dealers\FourPlayerDealer.cs" />
     <Compile Include="DDZUtils\Entities\GameConfig.cs" />
     <Compile Include="DDZUtils\Entities\GameRecord.cs" />
     <Compile Include="DDZUtils\Entities\PlayerMessage.cs" />
@@ -64,16 +94,37 @@
     <Compile Include="DDZUtils\Entities\Card.cs" />
     <Compile Include="DDZUtils\Enums\PlayerMessageType.cs" />
     <Compile Include="DDZUtils\Enums\Suit.cs" />
+    <Compile Include="DDZUtils\GameIOs\ConsoleGameSetup.cs" />
     <Compile Include="DDZUtils\GameIOs\ConsoleIO.cs" />
+    <Compile Include="DDZUtils\GameIOs\TuiGameIO.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\CardFaceRenderer.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\CardRender.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\HandCardView.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\MoveKindFormatter.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\SeatPanelView.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\StyledButton.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\TuiApp.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\TuiGameEndView.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\TuiGameState.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\TuiGameView.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\TuiMenuView.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\TuiSettingsStore.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\TuiSettingsView.cs" />
+    <Compile Include="DDZUtils\GameIOs\StdioGameIO.cs" />
     <Compile Include="DDZUtils\Interfaces\IGameIO.cs" />
     <Compile Include="DDZUtils\Interfaces\ISerializable.cs" />
     <Compile Include="DDZUtils\MoveUtils.cs" />
+    <Compile Include="DDZUtils\Players\PlayerFactory.cs" />
     <Compile Include="DDZUtils\Players\BotPlayer.cs" />
     <Compile Include="DDZUtils\Players\ConsoleRealPlayer.cs" />
     <Compile Include="DDZUtils\Players\RealPlayer.cs" />
     <Compile Include="DDZUtils\ShuffleUtils.cs" />
+    <Compile Include="DDZUtils\Tests\SelfPlayMiner.cs" />
+    <Compile Include="DDZUtils\Tests\SelfPlayRunner.cs" />
+    <Compile Include="DDZUtils\Tests\TrainingDataGenerator.cs" />
     <Compile Include="DDZUtils\Tests\BasicGameTest.cs" />
     <Compile Include="DDZUtils\Tests\ConsoleGameTest.cs" />
+    <Compile Include="ProgramStdio.cs" />
     <Compile Include="DDZUtils\Tests\DDZAnalyzerTest.cs" />
     <Compile Include="DDZUtils\Entities\DealerMessage.cs" />
     <Compile Include="DDZUtils\Enums\DealerMessageType.cs" />
@@ -97,6 +148,10 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+    <None Include="models\bot_model.bin" Condition="Exists('models\bot_model.bin')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>models\bot_model.bin</Link>
+    </None>
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

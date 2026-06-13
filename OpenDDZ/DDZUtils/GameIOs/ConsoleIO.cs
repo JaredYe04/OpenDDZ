@@ -1,4 +1,4 @@
-﻿using OpenDDZ.DDZUtils.Entities;
+using OpenDDZ.DDZUtils.Entities;
 using OpenDDZ.DDZUtils.Interfaces;
 using OpenDDZ.DDZUtils.Tests;
 using System;
@@ -54,10 +54,11 @@ namespace OpenDDZ.DDZUtils.GameIOs
         }
         public string GetBidInput(IPlayer player)
         {
-            Console.WriteLine($"{player.Name}，请输入你的叫分（0-3），或按回车跳过：");
-            string input= Console.ReadLine();
-            //进行parse,0是不叫，1是1分
-            while(true)
+            ShowHand(player);
+            Console.WriteLine($"{player.Name}，请输入叫分（0=不叫, 1/2/3 或 1分/2分/3分/不叫），回车=不叫：");
+            string input = Console.ReadLine()?.Trim() ?? "";
+            if (string.IsNullOrEmpty(input) || input == "0") return "不叫";
+            while (true)
             {
                 switch (input)
                 {
@@ -66,8 +67,9 @@ namespace OpenDDZ.DDZUtils.GameIOs
                     case "3": case "3分": return "3分";
                     case "0": case "不叫": return "不叫";
                     default:
-                        Console.WriteLine("请输入正确的叫分:");
-                        input = Console.ReadLine();
+                        Console.WriteLine("请输入 1/2/3 或 不叫：");
+                        input = Console.ReadLine()?.Trim() ?? "";
+                        if (string.IsNullOrEmpty(input)) return "不叫";
                         break;
                 }
             }
@@ -81,6 +83,16 @@ namespace OpenDDZ.DDZUtils.GameIOs
         public void ShowGameEnd(IPlayer winner)
         {
             Console.WriteLine($"游戏结束，胜者：{GetPlayerName(winner)}");
+        }
+
+        public Card GetDiscardInput(IPlayer player)
+        {
+            return null;
+        }
+
+        public void EmitPlayRejected(string reason)
+        {
+            ShowError(reason);
         }
 
         private string GetPlayerName(IPlayer player)

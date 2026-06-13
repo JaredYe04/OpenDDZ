@@ -1,4 +1,4 @@
-﻿using OpenDDZ.DDZUtils.Entities;
+using OpenDDZ.DDZUtils.Entities;
 using OpenDDZ.DDZUtils.Enums;
 using OpenDDZ.DDZUtils.Interfaces;
 using System;
@@ -118,6 +118,25 @@ namespace OpenDDZ.DDZUtils
             return deck;
         }
 
+        /// <summary> 创建不含 3/4/5 的牌堆（四人斗地主用） </summary>
+        public static List<Card> CreateDeckWithout345()
+        {
+            var deck = new List<Card>();
+            foreach (Rank r in Enum.GetValues(typeof(Rank)))
+            {
+                if (r == Rank.JokerSmall || r == Rank.JokerBig || r == Rank.Three || r == Rank.Four || r == Rank.Five)
+                    continue;
+                foreach (Suit s in Enum.GetValues(typeof(Suit)))
+                {
+                    if (s == Suit.Joker) continue;
+                    deck.Add(new Card(r, s));
+                }
+            }
+            deck.Add(new Card(Rank.JokerSmall, Suit.Joker));
+            deck.Add(new Card(Rank.JokerBig, Suit.Joker));
+            return deck;
+        }
+
         /// <summary>
         ///  贪心算法：找到当前手牌中，能压制lastMove的最小牌型
         /// </summary>
@@ -135,21 +154,15 @@ namespace OpenDDZ.DDZUtils
             // 如果没有lastMove，选择牌数最多的最小牌
             if (lastMove == null || lastMove.Cards.Count == 0)
             {
-                allMoves.Aggregate((m1, m2) =>
+                var list = allMoves.ToList();
+                if (list.Count == 0) return null;
+                bestMove = list[0];
+                foreach (var m in list)
                 {
-                    if (bestMove == null ||
-                        m1.Cards.Count > bestMove.Cards.Count ||
-                        (m1.Cards.Count == bestMove.Cards.Count && m1.Cards.Min(c => c.Rank) < bestMove.Cards.Min(c => c.Rank)))
-                    {
-                        bestMove = m1;
-                    }
-                    if (m2.Cards.Count > bestMove.Cards.Count ||
-                        (m2.Cards.Count == bestMove.Cards.Count && m2.Cards.Min(c => c.Rank) < bestMove.Cards.Min(c => c.Rank)))
-                    {
-                        bestMove = m2;
-                    }
-                    return bestMove;
-                });
+                    if (m.Cards.Count > bestMove.Cards.Count ||
+                        (m.Cards.Count == bestMove.Cards.Count && m.Cards.Min(c => c.Rank) < bestMove.Cards.Min(c => c.Rank)))
+                        bestMove = m;
+                }
                 return bestMove;
             }
 
@@ -262,25 +275,128 @@ namespace OpenDDZ.DDZUtils
                 }
             }
 
-            // 连对（长度3及以上）
-            var pairGroups = hand.GroupBy(c => c.Rank).Where(g => g.Count() >= 2).Select(g => g.Take(2).ToList()).ToList();
-            foreach (var pair in pairGroups)
+            // 连对（3 连对及以上）
+            var pairRanks = hand.GroupBy(c => c.Rank).Where(g => g.Count() >= 2).Select(g => g.Key).OrderBy(r => r).ToList();
+            for (int len = 3; len <= pairRanks.Count; len++)
             {
-                for (int len = 3; len <= pairGroups.Count; len++)
+                for (int i = 0; i <= pairRanks.Count - len; i++)
                 {
-                    for (int i = 0; i <= pairGroups.Count - len; i++)
+                    bool consecutive = true;
+                    for (int j = 1; j < len; j++)
                     {
-                        var seq = pairGroups.Skip(i).Take(len).SelectMany(p => p).ToList();
-                        if (MoveUtils.Detect(new Move(seq), rules).Kind == MoveKind.Pair)
-                            moves.Add(new Move(seq));
+                        if ((int)pairRanks[i + j] != (int)pairRanks[i + j - 1] + 1)
+                        {
+                            consecutive = false;
+                            break;
+                        }
+                    }
+                    if (!consecutive) continue;
+                    var seqCards = new List<Card>();
+                    for (int j = 0; j < len; j++)
+                    {
+                        var rank = pairRanks[i + j];
+                        seqCards.AddRange(hand.Where(c => c.Rank == rank).Take(2));
+                    }
+                    if (MoveUtils.Detect(new Move(seqCards), rules).Kind == MoveKind.ConsecutivePairs)
+                        moves.Add(new Move(seqCards));
+                }
+            }
+
+            // 飞机（连续三张）及带牌
+            var tripleRanks = hand.GroupBy(c => c.Rank).Where(g => g.Count() >= 3).Select(g => g.Key).OrderBy(r => r).ToList();
+            for (int len = 2; len <= tripleRanks.Count; len++)
+            {
+                for (int i = 0; i <= tripleRanks.Count - len; i++)
+                {
+                    bool consecutive = true;
+                    for (int j = 1; j < len; j++)
+                    {
+                        if ((int)tripleRanks[i + j] != (int)tripleRanks[i + j - 1] + 1)
+                        {
+                            consecutive = false;
+                            break;
+                        }
+                    }
+                    if (!consecutive) continue;
+
+                    var planeCards = new List<Card>();
+                    for (int j = 0; j < len; j++)
+                        planeCards.AddRange(hand.Where(c => c.Rank == tripleRanks[i + j]).Take(3));
+
+                    var planeMove = new Move(planeCards);
+                    if (MoveUtils.Detect(planeMove, rules).Kind == MoveKind.Plane)
+                        moves.Add(planeMove);
+
+                    // 飞机带牌：每种飞机只取一组最小带牌，避免组合爆炸
+                    var usedRanks = new HashSet<Rank>(tripleRanks.Skip(i).Take(len));
+                    var remaining = hand.Where(c => !usedRanks.Contains(c.Rank)).ToList();
+                    if (remaining.Count >= len)
+                    {
+                        var withSingles = new List<Card>(planeCards);
+                        withSingles.AddRange(remaining.OrderBy(c => (int)c.Rank).Take(len));
+                        var m = new Move(withSingles);
+                        if (MoveUtils.Detect(m, rules).Kind == MoveKind.Plane)
+                            moves.Add(m);
+                    }
+                    var attachPairs = remaining.GroupBy(c => c.Rank).Where(g => g.Count() >= 2).Take(len).ToList();
+                    if (attachPairs.Count >= len)
+                    {
+                        var withPairs = new List<Card>(planeCards);
+                        foreach (var pg in attachPairs)
+                            withPairs.AddRange(pg.Take(2));
+                        var m = new Move(withPairs);
+                        if (MoveUtils.Detect(m, rules).Kind == MoveKind.Plane)
+                            moves.Add(m);
                     }
                 }
             }
 
+            // 5+ 炸
+            foreach (var group in hand.GroupBy(c => c.Rank).Where(g => g.Count() >= 5))
+            {
+                for (int size = 5; size <= group.Count(); size++)
+                    moves.Add(new Move(group.Take(size).ToList()));
+            }
 
-
-            return moves;
+            return DeduplicateMoves(moves);
         }
+
+        /// <summary> 出牌候选（跟牌时含 pass=null） </summary>
+        public static List<Move> GeneratePlayCandidates(List<Card> hand, Move lastMove, RuleSet rules)
+        {
+            var candidates = GenerateAllMoves(hand, rules).ToList();
+            if (lastMove != null && lastMove.Cards != null && lastMove.Cards.Count > 0)
+                candidates.Add(null);
+            return candidates;
+        }
+
+        private static IEnumerable<Move> DeduplicateMoves(List<Move> moves)
+        {
+            var seen = new HashSet<string>();
+            foreach (var m in moves)
+            {
+                var key = string.Join(",", m.Cards.OrderBy(c => (int)c.Rank).ThenBy(c => (int)c.Suit).Select(c => c.ToString()));
+                if (seen.Add(key))
+                    yield return m;
+            }
+        }
+        private static List<List<T>> CombineGroups<T>(List<T> items, int k)
+        {
+            var result = new List<List<T>>();
+            void Backtrack(int start, List<T> current)
+            {
+                if (current.Count == k) { result.Add(new List<T>(current)); return; }
+                for (int i = start; i < items.Count; i++)
+                {
+                    current.Add(items[i]);
+                    Backtrack(i + 1, current);
+                    current.RemoveAt(current.Count - 1);
+                }
+            }
+            Backtrack(0, new List<T>());
+            return result;
+        }
+
         /// <summary>
         /// 辅助函数：获取所有组合
         /// </summary>

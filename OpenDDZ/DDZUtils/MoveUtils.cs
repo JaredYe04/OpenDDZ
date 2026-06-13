@@ -7,19 +7,96 @@ using System.Linq;
 namespace OpenDDZ.DDZUtils
 {
     /// <summary>
-    /// ÅÆĞÍÅĞ¶¨Óë±È½Ï¹¤¾ßÀà
+    /// ??????????
     /// </summary>
     public static class MoveUtils
     {
+        /// <summary> ??????H3,S4,X(??),Y(??) </summary>
+        public static string CardToProtocolString(Card c)
+        {
+            if (c.Rank == Rank.JokerSmall) return "X";
+            if (c.Rank == Rank.JokerBig) return "Y";
+            char suit = c.Suit == Suit.Heart ? 'H' : c.Suit == Suit.Spade ? 'S' : c.Suit == Suit.Diamond ? 'D' : 'C';
+            string r = RankToProtocolString(c.Rank);
+            return suit + r;
+        }
+
+        private static string RankToProtocolString(Rank rank)
+        {
+            switch (rank)
+            {
+                case Rank.Three: return "3";
+                case Rank.Four: return "4";
+                case Rank.Five: return "5";
+                case Rank.Six: return "6";
+                case Rank.Seven: return "7";
+                case Rank.Eight: return "8";
+                case Rank.Nine: return "9";
+                case Rank.Ten: return "10";
+                case Rank.J: return "J";
+                case Rank.Q: return "Q";
+                case Rank.K: return "K";
+                case Rank.A: return "A";
+                case Rank.Two: return "2";
+                default: return ((int)rank).ToString();
+            }
+        }
+
+        /// <summary> ??????????? </summary>
+        public static Card ParseCardFromProtocolString(string str)
+        {
+            if (string.IsNullOrEmpty(str)) throw new ArgumentException("Empty card string");
+            str = str.Trim().ToUpper();
+            if (str == "X") return new Card(Rank.JokerSmall, Suit.Joker);
+            if (str == "Y") return new Card(Rank.JokerBig, Suit.Joker);
+            Suit suit;
+            if (str.StartsWith("H")) suit = Suit.Heart;
+            else if (str.StartsWith("S")) suit = Suit.Spade;
+            else if (str.StartsWith("D")) suit = Suit.Diamond;
+            else if (str.StartsWith("C")) suit = Suit.Club;
+            else throw new ArgumentException("Invalid card: " + str);
+            string rankStr = str.Length > 1 ? str.Substring(1) : "";
+            Rank rank;
+            switch (rankStr)
+            {
+                case "3": rank = Rank.Three; break;
+                case "4": rank = Rank.Four; break;
+                case "5": rank = Rank.Five; break;
+                case "6": rank = Rank.Six; break;
+                case "7": rank = Rank.Seven; break;
+                case "8": rank = Rank.Eight; break;
+                case "9": rank = Rank.Nine; break;
+                case "10": rank = Rank.Ten; break;
+                case "J": rank = Rank.J; break;
+                case "Q": rank = Rank.Q; break;
+                case "K": rank = Rank.K; break;
+                case "A": rank = Rank.A; break;
+                case "2": rank = Rank.Two; break;
+                default: throw new ArgumentException("Invalid rank: " + rankStr);
+            }
+            return new Card(rank, suit);
+        }
+
+        /// <summary> ?????????? Move </summary>
+        public static Move ParseMoveFromProtocolStrings(IEnumerable<string> cardStrs)
+        {
+            var cards = new List<Card>();
+            foreach (var s in cardStrs)
+            {
+                if (string.IsNullOrWhiteSpace(s)) continue;
+                cards.Add(ParseCardFromProtocolString(s.Trim()));
+            }
+            return new Move(cards);
+        }
         /// <summary>
-        /// ½âÎöÍæ¼ÒÊäÈëµÄ×Ö·û´®ÎªÒ»¸ö Move ¶ÔÏó£¬²¢ÑéÖ¤ÕâĞ©ÅÆÊÇ·ñÔÚÍæ¼ÒÊÖÅÆÖĞ
+        /// ????????????????????? Move ????????????????????????????
         /// </summary>
         /// <param name="input"></param>
         /// <param name="hand"></param>
         /// <returns></returns>
         public static Move ParseMove(string input)
         {
-            var parts = input.Split(new[] { ',', ' ', ';' }, System.StringSplitOptions.RemoveEmptyEntries);
+            var parts = input.Split(new[] { ',', ' ', ';', 'ï¼Œ', 'ã€' }, StringSplitOptions.RemoveEmptyEntries);
             var selected = new List<Card>();
             foreach (var part in parts)
             {
@@ -30,18 +107,16 @@ namespace OpenDDZ.DDZUtils
                 }
                 catch (Exception ex)
                 {
-                    throw new ArgumentException($"ÎŞ·¨½âÎöµÄÅÆ: {part}", ex);
+                    throw new ArgumentException($"æ— æ³•è§£æçš„ç‰Œ: {part}", ex);
                 }
-
             }
             return new Move(selected);
-
         }
         public static bool ValidateMove(Move move, IList<Card> hand)
         {
             if (move == null) return true;
 
-            // ¼ì²éÊÇ·ñ¶¼ÔÚÊÖÅÆ
+            // ????????????
             foreach (var card in move.Cards)
             {
                 if (!hand.Any(h => h.Suit == card.Suit && h.Rank == card.Rank))
@@ -51,22 +126,32 @@ namespace OpenDDZ.DDZUtils
         }
         private static Card ParseCard(string str)
         {
-            str = str.Replace(" ", "").Replace("ºìÌÒ", "H").Replace("ºÚÌÒ", "S").Replace("·½Æ¬", "D").Replace("Ã·»¨", "C");
-            if (str == "Ğ¡Íõ") return new Card(Rank.JokerSmall, Suit.Joker);
-            if (str == "´óÍõ") return new Card(Rank.JokerBig, Suit.Joker);
+            str = str.Trim().Replace(" ", "");
+            if (string.IsNullOrEmpty(str))
+                throw new ArgumentException("ç©ºç‰Œé¢");
+
+            if (str == "å°ç‹" || str.Equals("X", StringComparison.OrdinalIgnoreCase))
+                return new Card(Rank.JokerSmall, Suit.Joker);
+            if (str == "å¤§ç‹" || str.Equals("Y", StringComparison.OrdinalIgnoreCase))
+                return new Card(Rank.JokerBig, Suit.Joker);
 
             Suit? suit = null;
-            Rank? rank = null;
+            string rankStr = str;
 
-            if (str.StartsWith("H")) suit = Suit.Heart;
-            else if (str.StartsWith("S")) suit = Suit.Spade;
-            else if (str.StartsWith("D")) suit = Suit.Diamond;
-            else if (str.StartsWith("C")) suit = Suit.Club;
+            if (str.StartsWith("çº¢æ¡ƒ")) { suit = Suit.Heart; rankStr = str.Substring(2); }
+            else if (str.StartsWith("é»‘æ¡ƒ")) { suit = Suit.Spade; rankStr = str.Substring(2); }
+            else if (str.StartsWith("æ–¹ç‰‡")) { suit = Suit.Diamond; rankStr = str.Substring(2); }
+            else if (str.StartsWith("æ¢…èŠ±")) { suit = Suit.Club; rankStr = str.Substring(2); }
+            else if (str.StartsWith("H", StringComparison.OrdinalIgnoreCase)) { suit = Suit.Heart; rankStr = str.Substring(1); }
+            else if (str.StartsWith("S", StringComparison.OrdinalIgnoreCase)) { suit = Suit.Spade; rankStr = str.Substring(1); }
+            else if (str.StartsWith("D", StringComparison.OrdinalIgnoreCase)) { suit = Suit.Diamond; rankStr = str.Substring(1); }
+            else if (str.StartsWith("C", StringComparison.OrdinalIgnoreCase)) { suit = Suit.Club; rankStr = str.Substring(1); }
 
-            if (!suit.HasValue || str.Length < 2)
-                throw new ArgumentException($"ÎŞ·¨½âÎöµÄÅÆ: {str}");
+            if (!suit.HasValue || string.IsNullOrEmpty(rankStr))
+                throw new ArgumentException($"æ— æ³•è§£æçš„ç‰Œ: {str}");
 
-            var rankStr = str.Substring(1).ToUpper();
+            rankStr = rankStr.ToUpper();
+            Rank rank;
             switch (rankStr)
             {
                 case "A": rank = Rank.A; break;
@@ -82,12 +167,12 @@ namespace OpenDDZ.DDZUtils
                 case "4": rank = Rank.Four; break;
                 case "3": rank = Rank.Three; break;
                 case "2": rank = Rank.Two; break;
-                default: throw new ArgumentException($"ÎŞ·¨½âÎöµÄÅÆ: {str}");
+                default: throw new ArgumentException($"æ— æ³•è§£æçš„ç‰Œ: {str}");
             }
-            return rank.HasValue ? new Card(rank.Value, suit.Value) : throw new ArgumentException($"ÎŞ·¨½âÎöµÄÅÆ: {str}"); ;
+            return new Card(rank, suit.Value);
         }
         /// <summary>
-        /// ÅĞ¶¨Ò»´Î³öÅÆµÄÅÆĞÍ
+        /// ??????????????
         /// </summary>
         public static MoveClassification Detect(Move move, RuleSet rules)
         {
@@ -95,7 +180,7 @@ namespace OpenDDZ.DDZUtils
         }
 
         /// <summary>
-        /// ÅĞ¶Ï next ÊÇ·ñÄÜÑ¹ prev (True if next beats prev)
+        /// ??? next ?????? prev (True if next beats prev)
         /// </summary>
         public static bool CanBeat(Move prev, Move next, RuleSet rules)
         {
@@ -105,7 +190,7 @@ namespace OpenDDZ.DDZUtils
             var nextC = Detect(next, rules);
             if (prevC.Kind == MoveKind.Invalid || nextC.Kind == MoveKind.Invalid)
                 return false;
-            //ÒªÊ×ÏÈÅĞ¶ÏÊÇ·ñÎŞĞ§£¬ÎŞĞ§µÄÅÆĞÍ²»ÄÜÑ¹ÈÎºÎÅÆ£¬Ò²²»ÄÜ±»ÈÎºÎÅÆÑ¹
+            //???????????????????????????????????????????????
             if (prevC.Kind == MoveKind.None)
                 return true;
             // If prev is Bomb:
@@ -152,7 +237,7 @@ namespace OpenDDZ.DDZUtils
         }
 
         /// <summary>
-        /// ÄÚ²¿ÅĞ¶¨ºËĞÄ
+        /// ??????????
         /// </summary>
         private static class AnalyzerCore
         {
@@ -186,7 +271,7 @@ namespace OpenDDZ.DDZUtils
                     };
                 }
 
-                // 2) Bomb (µ¥Ò»ÅÆµãÇÒÊıÁ¿×ã¹»)
+                // 2) Bomb (??????????????)
                 if (counts.Count == 1)
                 {
                     var only = counts.First();
@@ -204,22 +289,22 @@ namespace OpenDDZ.DDZUtils
 
                 var candidates = new List<MoveClassification>();
 
-                // 3) ·É»ú
+                // 3) ???
                 candidates.AddRange(PlaneHelper.DetectPlanes(counts, total, rules));
-                // 4) ËÄ´ø
+                // 4) ???
                 candidates.AddRange(FourAttachHelper.DetectFourWithAttachments(counts, total, rules));
-                // 5) Èı´ø
+                // 5) ????
                 candidates.AddRange(TripleHelper.DetectTriplesLike(counts, total));
-                // 6) Á¬¶Ô
+                // 6) ????
                 var consecPairs = PairHelper.DetectConsecutivePairs(counts, total, rules);
                 if (consecPairs != null) candidates.Add(consecPairs);
-                // 7) ¶Ô×Ó/µ¥ÕÅ
+                // 7) ????/????
                 if (total == 2 && counts.Count == 1)
                     candidates.Add(new MoveClassification { Kind = MoveKind.Pair, PrimaryRank = counts.First().Key, CountPrimary = 2 });
                 if (total == 1)
                     candidates.Add(new MoveClassification { Kind = MoveKind.Single, PrimaryRank = cards[0].Rank, CountPrimary = 1 });
 
-                // 9) Ë³×Ó
+                // 9) ???
                 if (cards.Count >= 5 && StraightHelper.IsStraight(cards))
                     return new MoveClassification { Kind = MoveKind.Straight, PrimaryRank = cards.Max(c => c.Rank), CountPrimary = cards.Count, SequenceLength = cards.Count };
 
@@ -276,7 +361,7 @@ namespace OpenDDZ.DDZUtils
         }
 
         /// <summary>
-        /// Ë³×ÓÏà¹Ø¸¨Öú
+        /// ?????????
         /// </summary>
         private static class StraightHelper
         {
@@ -295,14 +380,14 @@ namespace OpenDDZ.DDZUtils
         }
 
         /// <summary>
-        /// ·É»úÏà¹Ø¸¨Öú
+        /// ?????????
         /// </summary>
         private static class PlaneHelper
         {
             public static List<MoveClassification> DetectPlanes(Dictionary<Rank, int> counts, int total, RuleSet rules)
             {
                 var results = new List<MoveClassification>();
-                // ¹ıÂËµô2ºÍÍõ£¬Èı¸ö2/Íõ²»ÄÜ×÷Îª·É»úÖ÷Ìå
+                // ?????2??????????2/????????????????
                 var candidateRanks = counts.Where(kvp => kvp.Value >= 3)
                     .Select(kvp => kvp.Key)
                     .Where(r => r != Rank.Two && r != Rank.JokerSmall && r != Rank.JokerBig)
@@ -324,7 +409,7 @@ namespace OpenDDZ.DDZUtils
                         if (!cons) continue;
                         int len = j - i + 1;
                         var seqRanks = ordinals.Skip(i).Take(len).Select(x => (Rank)x).ToList();
-                        // Ö÷Ìå²»ÄÜ°üº¬2ºÍÍõ
+                        // ?????????2????
                         if (seqRanks.Any(r => r == Rank.Two || r == Rank.JokerSmall || r == Rank.JokerBig))
                             continue;
 
@@ -338,7 +423,7 @@ namespace OpenDDZ.DDZUtils
                         if (!ok) continue;
 
                         int leftoverSum = leftover.Values.Sum();
-                        // ´øÅÆ¿ÉÒÔ°üº¬´óĞ¡Íõ
+                        // ???????????????
                         if (leftoverSum == 0)
                         {
                             results.Add(new MoveClassification
@@ -389,7 +474,7 @@ namespace OpenDDZ.DDZUtils
         }
 
         /// <summary>
-        /// ËÄ´øÏà¹Ø¸¨Öú
+        /// ?????????
         /// </summary>
         private static class FourAttachHelper
         {
@@ -438,7 +523,7 @@ namespace OpenDDZ.DDZUtils
         }
 
         /// <summary>
-        /// Èı´øÏà¹Ø¸¨Öú
+        /// ??????????
         /// </summary>
         private static class TripleHelper
         {
@@ -481,7 +566,7 @@ namespace OpenDDZ.DDZUtils
         }
 
         /// <summary>
-        /// Á¬¶ÔÏà¹Ø¸¨Öú
+        /// ??????????
         /// </summary>
         private static class PairHelper
         {

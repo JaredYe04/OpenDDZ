@@ -1,4 +1,4 @@
-﻿using OpenDDZ.DDZUtils.Entities;
+using OpenDDZ.DDZUtils.Entities;
 using OpenDDZ.DDZUtils.Enums;
 using OpenDDZ.DDZUtils.Interfaces;
 using System;
@@ -57,11 +57,32 @@ namespace OpenDDZ.DDZUtils.Players
                     // 由GameController主循环处理
                     break;
                 case DealerMessageType.RequestCallLandlord:
+                    string[] callOptions = null;
+                    int highestBid = 0;
+                    if (message.Data is object[] arr && arr.Length >= 2)
+                    {
+                        callOptions = arr[0] as string[];
+                        if (arr[1] is int hb) highestBid = hb;
+                    }
+                    else
+                    {
+                        callOptions = message.Data as string[];
+                    }
+                    var optsText = callOptions != null ? string.Join(" / ", callOptions) : "1分 / 2分 / 3分 / 不叫";
+                    GameIO.ShowHand(this);
+                    GameIO.ShowMessage($"请叫地主（当前最高: {highestBid} 分，可选: {optsText}）");
                     var call = GameIO.GetBidInput(this);
                     return new PlayerMessage
                     {
                         Type = PlayerMessageType.CallLandlord,
                         Data = call
+                    };
+                case DealerMessageType.RequestDiscard:
+                    var card = GameIO.GetDiscardInput(this);
+                    return new PlayerMessage
+                    {
+                        Type = PlayerMessageType.Discard,
+                        Data = card
                     };
                 default:
                     GameIO.ShowError(message.Content);

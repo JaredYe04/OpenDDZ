@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using OpenDDZ.DDZUtils.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -26,6 +26,18 @@ namespace OpenDDZ.DDZUtils.Entities
         public RuleSet Rules { get; set; } = RuleSet.Default;
 
         public bool EnableLandlord { get; set; } = true;//启用叫地主模式
+
+        /// <summary> 游戏模式：Normal=3人斗地主，FourPlayer=4人2v2 </summary>
+        public GameMode Mode { get; set; } = GameMode.Normal;
+
+        /// <summary> 发牌完成后、叫地主/弃牌前调用，用于向客户端推送手牌等。 </summary>
+        [JsonIgnore]
+        public Action AfterDeal { get; set; }
     }
 
+    public enum GameMode
+    {
+        Normal = 0,
+        FourPlayer = 1
+    }
 }

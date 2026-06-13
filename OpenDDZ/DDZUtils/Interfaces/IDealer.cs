@@ -73,6 +73,15 @@ namespace OpenDDZ.DDZUtils.Interfaces
         /// <param name="player">发送消息的玩家</param>
         /// <param name="message">玩家消息</param>
         void OnPlayerMessage(IPlayer player, PlayerMessage message);
+
+        /// <summary> 地主座位索引，未确定时为 -1 </summary>
+        int LandlordIndex { get; }
+
+        /// <summary> 本局玩家列表 </summary>
+        IReadOnlyList<IPlayer> Players { get; }
+
+        /// <summary> 获取玩家座位索引 </summary>
+        int GetPlayerIndex(IPlayer player);
     }
 
 }
