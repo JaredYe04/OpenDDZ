@@ -19,11 +19,18 @@ namespace OpenDDZ.DDZUtils.Players
         public int[] HandCounts { get; set; }
         public int LandlordIndex { get; set; } = -1;
         public bool IsLandlord => LandlordIndex == MyIndex;
+        public CardTracker CardTracker { get; set; }
+        public int[] TeamIds { get; set; }
+
         public bool IsTeammate(int index)
         {
             if (index == MyIndex) return true;
             if (Mode == GameMode.FourPlayer)
+            {
+                if (TeamIds != null && index < TeamIds.Length && MyIndex < TeamIds.Length)
+                    return TeamIds[index] == TeamIds[MyIndex];
                 return (MyIndex % 2) == (index % 2);
+            }
             if (LandlordIndex < 0) return false;
             return index != LandlordIndex && !IsLandlord;
         }
@@ -34,7 +41,6 @@ namespace OpenDDZ.DDZUtils.Players
         public GameMode Mode { get; set; }
         public int HighestBid { get; set; }
         public string[] BidOptions { get; set; }
-        public CardTracker CardTracker { get; set; }
 
         public static BotDecisionContext From(IPlayer self, IDealer dealer)
         {
@@ -62,6 +68,14 @@ namespace OpenDDZ.DDZUtils.Players
 
             var tracker = CardTracker.Create(mode, deckCount, hand, played);
 
+            int[] teamIds = null;
+            if (mode == GameMode.FourPlayer && dealer is IFourPlayerTeamInfo teamInfo)
+            {
+                teamIds = new int[players.Count];
+                for (int i = 0; i < players.Count; i++)
+                    teamIds[i] = teamInfo.GetTeamId(i);
+            }
+
             return new BotDecisionContext
             {
                 Self = self,
@@ -77,7 +91,8 @@ namespace OpenDDZ.DDZUtils.Players
                 Rules = dealer.Rules,
                 DeckCount = deckCount,
                 Mode = mode,
-                CardTracker = tracker
+                CardTracker = tracker,
+                TeamIds = teamIds
             };
         }
     }

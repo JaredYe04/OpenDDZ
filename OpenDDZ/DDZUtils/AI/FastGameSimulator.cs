@@ -107,11 +107,15 @@ namespace OpenDDZ.DDZUtils.AI
             return new Move(new List<Card> { hand.OrderBy(c => (int)c.Rank).First() });
         }
 
-        public static bool DidPlayerWin(int winnerIndex, int playerIndex, GameMode mode)
+        public static bool DidPlayerWin(int winnerIndex, int playerIndex, GameMode mode, int[] teamIds = null)
         {
             if (winnerIndex < 0) return false;
             if (mode == GameMode.FourPlayer)
+            {
+                if (teamIds != null && winnerIndex < teamIds.Length && playerIndex < teamIds.Length)
+                    return teamIds[winnerIndex] == teamIds[playerIndex];
                 return (winnerIndex % 2) == (playerIndex % 2);
+            }
             return winnerIndex == playerIndex;
         }
     }

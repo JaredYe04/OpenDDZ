@@ -95,6 +95,8 @@ namespace OpenDDZ.DDZUtils.GameIOs
             ShowError(reason);
         }
 
+        public void BeforeBotPlay(IPlayer player) { }
+
         private string GetPlayerName(IPlayer player)
         {
             return player.Name;

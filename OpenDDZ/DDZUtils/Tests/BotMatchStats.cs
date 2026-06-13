@@ -39,7 +39,7 @@ namespace OpenDDZ.DDZUtils.Tests
             if (Mode == "Normal")
                 lines.Add($"  Landlord wins: {LandlordWins}, Farmer wins: {FarmerWins}");
             if (Mode == "FourPlayer")
-                lines.Add($"  Team0(0+2) wins: {Team0Wins}, Team1(1+3) wins: {Team1Wins}");
+                lines.Add($"  Team0 wins: {Team0Wins}, Team1 wins: {Team1Wins}");
             foreach (var kv in StrategySeatWins)
                 lines.Add($"  Strategy {kv.Key} wins: {kv.Value}");
             return string.Join(Environment.NewLine, lines);

@@ -1,4 +1,5 @@
 using OpenDDZ.DDZUtils;
+using OpenDDZ.DDZUtils.Dealers;
 using OpenDDZ.DDZUtils.Entities;
 using OpenDDZ.DDZUtils.Interfaces;
 using OpenDDZ.DDZUtils.Players;
@@ -29,6 +30,8 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
         private Card _pendingDiscard;
         private bool _discardDone;
 
+        private readonly Random _botDelayRng = new Random();
+
         public TuiGameIO(TuiGameState state)
         {
             _state = state;
@@ -45,7 +48,9 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
             _players = players?.ToList() ?? new List<IPlayer>();
             _state.AllPlayers = _players;
             _state.PlayerCount = _players.Count;
-            _state.HumanSeatIndex = FindHumanSeatIndex();
+            int humanSeat = FindHumanSeatIndex();
+            _state.HumanSeatIndex = humanSeat;
+            _state.ViewSeatIndex = humanSeat;
         }
 
         public void SetMode(GameMode mode) => _state.Mode = mode;
@@ -57,6 +62,7 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
             InvokeUi(() =>
             {
                 _state.AddMessage(message);
+                SyncHumanHandFromPlayer();
                 RefreshSnapshot(null);
             });
         }
@@ -83,11 +89,11 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
 
         public void ShowHand(IPlayer player)
         {
-            InvokeUi(() =>
+            InvokeUiAndWait(() =>
             {
                 if (player == null) return;
-                _state.HandCards = CardRender.SortHand(player.GetHandCards());
-                RefreshSnapshot(player);
+                SyncHumanHandFromPlayer(player);
+                RefreshSnapshot();
             });
         }
 
@@ -100,6 +106,7 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
                 _state.EffectiveLastMove = _state.IsFirstHand ? null : move;
                 _state.LastMovePlayer = lastPlayer;
                 UpdateCanBeat(player);
+                SyncHumanHandFromPlayer();
                 RefreshSnapshot(player);
             });
         }
@@ -116,10 +123,9 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
             {
                 _state.InputMode = TuiInputMode.WaitPlay;
                 _state.ActivePlayer = player;
-                _state.HumanSeatIndex = _dealer?.GetPlayerIndex(player) ?? _state.HumanSeatIndex;
                 _state.ErrorMessage = "";
                 _state.ClearSelection();
-                _state.HandCards = CardRender.SortHand(player.GetHandCards());
+                SyncHumanHandFromPlayer(player);
                 UpdateCanBeat(player);
                 RefreshSnapshot(player);
             });
@@ -153,10 +159,9 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
 
             InvokeUi(() =>
             {
-                _state.HandCards = CardRender.SortHand(player.GetHandCards());
+                SyncHumanHandFromPlayer(player);
                 _state.InputMode = TuiInputMode.WaitBid;
                 _state.ActivePlayer = player;
-                _state.HumanSeatIndex = _dealer?.GetPlayerIndex(player) ?? _state.HumanSeatIndex;
                 _state.ErrorMessage = "";
                 RefreshSnapshot(player);
             });
@@ -192,7 +197,8 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
             {
                 _state.InputMode = TuiInputMode.WaitDiscard;
                 _state.ActivePlayer = player;
-                _state.HandCards = CardRender.SortHand(player.GetHandCards());
+                _state.ErrorMessage = "";
+                SyncHumanHandFromPlayer(player);
                 _state.ClearSelection();
                 RefreshSnapshot(player);
             });
@@ -251,12 +257,53 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
 
         public void EmitPlayRejected(string reason)
         {
-            InvokeUi(() =>
+            InvokeUiAndWait(() =>
             {
                 _state.ErrorMessage = reason;
                 _state.InputMode = TuiInputMode.WaitPlay;
+                SyncHumanHandFromPlayer(_state.ActivePlayer as RealPlayer);
+                RefreshSnapshot();
                 _state.NotifyChanged();
             });
+        }
+
+        public void BeforeBotPlay(IPlayer player)
+        {
+            if (player == null || player is RealPlayer)
+                return;
+
+            InvokeUiAndWait(() =>
+            {
+                SyncHumanHandFromPlayer();
+                if (_dealer != null && _players.Count > 0)
+                    RefreshSnapshot(null);
+            });
+
+            int delayMs = _botDelayRng.Next(1000, 5001);
+            Thread.Sleep(delayMs);
+        }
+
+        private void InvokeUiAndWait(Action action)
+        {
+            if (Application.MainLoop == null)
+            {
+                action();
+                return;
+            }
+            using (var done = new ManualResetEventSlim(false))
+            {
+                Application.MainLoop.Invoke(() =>
+                {
+                    try { action(); }
+                    catch (Exception ex)
+                    {
+                        _state.ErrorMessage = "UI异常: " + ex.Message;
+                        _state.AddMessage("[UI异常] " + ex.Message);
+                    }
+                    finally { done.Set(); }
+                });
+                done.Wait(3000);
+            }
         }
 
         public void SubmitPlay(Move move)
@@ -268,6 +315,23 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
                 _playDone = true;
                 Monitor.PulseAll(_playLock);
             }
+
+            InvokeUiAndWait(() =>
+            {
+                if (_state.ActivePlayer is RealPlayer && move?.Cards != null && move.Cards.Count > 0)
+                {
+                    var remaining = _state.HandCards.ToList();
+                    foreach (var played in move.Cards)
+                    {
+                        int idx = remaining.FindIndex(c => c.Rank == played.Rank && c.Suit == played.Suit);
+                        if (idx >= 0) remaining.RemoveAt(idx);
+                    }
+                    _state.HandCards = remaining;
+                    _state.ClearSelection();
+                }
+                RefreshSnapshot();
+                _state.NotifyChanged();
+            });
         }
 
         public void SubmitBid(string bid)
@@ -334,7 +398,7 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
             _state.CanBeat = _state.IsFirstHand || hint != null;
         }
 
-        private void RefreshSnapshot(IPlayer perspective)
+        private void RefreshSnapshot(IPlayer perspective = null)
         {
             if (_dealer == null || _players.Count == 0)
             {
@@ -342,10 +406,11 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
                 return;
             }
 
-            int viewSeat = perspective != null
-                ? _dealer.GetPlayerIndex(perspective)
-                : _state.HumanSeatIndex;
-            if (viewSeat < 0) viewSeat = _state.HumanSeatIndex;
+            int viewSeat = _state.ViewSeatIndex;
+            if (viewSeat < 0)
+                viewSeat = FindHumanSeatIndex();
+
+            CaptureFourPlayerTeams();
 
             var lastBySeat = BuildLastMovesBySeat();
             int current = _dealer.GetCurrentPlayerIndex();
@@ -354,16 +419,22 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
             _state.Seats = new List<SeatDisplayInfo>();
             for (int i = 0; i < _players.Count; i++)
             {
-                int rel = RelativeSeat(viewSeat, i, _players.Count);
                 var p = _players[i];
+                bool isTeammate = _state.Mode == GameMode.FourPlayer
+                    && i != viewSeat
+                    && IsSameFourPlayerTeam(viewSeat, i);
                 var info = new SeatDisplayInfo
                 {
                     SeatIndex = i,
                     PlayerName = p.Name + (p is RealPlayer ? "" : " [Bot]"),
                     HandCount = p.GetHandCards().Count,
-                    IsLandlord = i == landlordIdx,
-                    IsCurrentTurn = i == current
+                    IsLandlord = _state.Mode != GameMode.FourPlayer && i == landlordIdx,
+                    IsCurrentTurn = i == current,
+                    IsTeammate = isTeammate
                 };
+
+                if (isTeammate)
+                    info.VisibleHandCards = CardRender.SortHand(p.GetHandCards().ToList());
 
                 if (lastBySeat.TryGetValue(i, out var seatMove))
                 {
@@ -375,7 +446,69 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
                 _state.Seats.Add(info);
             }
 
+            UpdateCardCounter(viewSeat);
             _state.NotifyChanged();
+        }
+
+        private void CaptureFourPlayerTeams()
+        {
+            if (_state.Mode != GameMode.FourPlayer)
+                return;
+
+            if (_dealer is IFourPlayerTeamInfo teamInfo)
+            {
+                if (_state.FourPlayerTeamIds == null || _state.FourPlayerTeamIds.Length != _players.Count)
+                    _state.FourPlayerTeamIds = new int[_players.Count];
+                for (int i = 0; i < _players.Count; i++)
+                    _state.FourPlayerTeamIds[i] = teamInfo.GetTeamId(i);
+            }
+        }
+
+        private bool IsSameFourPlayerTeam(int a, int b)
+        {
+            if (_state.FourPlayerTeamIds == null || a < 0 || b < 0
+                || a >= _state.FourPlayerTeamIds.Length || b >= _state.FourPlayerTeamIds.Length)
+            {
+                if (_dealer is IFourPlayerTeamInfo teamInfo)
+                    return teamInfo.SameTeam(a, b);
+                return false;
+            }
+            return _state.FourPlayerTeamIds[a] == _state.FourPlayerTeamIds[b];
+        }
+
+        private void SyncHumanHandFromPlayer(IPlayer player = null)
+        {
+            var human = player as RealPlayer ?? _players.FirstOrDefault(p => p is RealPlayer);
+            if (human == null) return;
+            _state.HandCards = CardRender.SortHand(human.GetHandCards());
+        }
+
+        private void UpdateCardCounter(int viewSeat)
+        {
+            int deckCount = _dealer?.CurrentGame?.Config?.DeckCount ?? 1;
+            if (_state.Mode == GameMode.FourPlayer)
+                deckCount = Math.Max(2, deckCount);
+            _state.DeckCount = deckCount;
+
+            var played = CollectPlayedCards();
+            _state.CardCounter = CardCounterHelper.Compute(
+                _state.Mode,
+                deckCount,
+                _state.HandCards,
+                played);
+        }
+
+        private List<Card> CollectPlayedCards()
+        {
+            var played = new List<Card>();
+            var moves = _dealer?.CurrentGame?.Moves;
+            if (moves == null) return played;
+            foreach (var entry in moves)
+            {
+                if (entry.move?.Cards != null)
+                    played.AddRange(entry.move.Cards);
+            }
+            return played;
         }
 
         private Dictionary<int, (bool IsPass, List<Card> Cards, string KindLabel)> BuildLastMovesBySeat()

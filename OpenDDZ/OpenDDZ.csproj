@@ -87,6 +87,7 @@
     <Compile Include="DDZUtils\Controllers\GameController.cs" />
     <Compile Include="DDZUtils\Dealers\BasicDealer.cs" />
     <Compile Include="DDZUtils\Dealers\FourPlayerDealer.cs" />
+    <Compile Include="DDZUtils\Dealers\FourPlayerTeamHelper.cs" />
     <Compile Include="DDZUtils\Entities\GameConfig.cs" />
     <Compile Include="DDZUtils\Entities\GameRecord.cs" />
     <Compile Include="DDZUtils\Entities\PlayerMessage.cs" />
@@ -97,6 +98,8 @@
     <Compile Include="DDZUtils\GameIOs\ConsoleGameSetup.cs" />
     <Compile Include="DDZUtils\GameIOs\ConsoleIO.cs" />
     <Compile Include="DDZUtils\GameIOs\TuiGameIO.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\CardCounterHelper.cs" />
+    <Compile Include="DDZUtils\GameIOs\Tui\CardCounterView.cs" />
     <Compile Include="DDZUtils\GameIOs\Tui\CardFaceRenderer.cs" />
     <Compile Include="DDZUtils\GameIOs\Tui\CardRender.cs" />
     <Compile Include="DDZUtils\GameIOs\Tui\HandCardView.cs" />
@@ -112,6 +115,7 @@
     <Compile Include="DDZUtils\GameIOs\Tui\TuiSettingsView.cs" />
     <Compile Include="DDZUtils\GameIOs\StdioGameIO.cs" />
     <Compile Include="DDZUtils\Interfaces\IGameIO.cs" />
+    <Compile Include="DDZUtils\Interfaces\IFourPlayerTeamInfo.cs" />
     <Compile Include="DDZUtils\Interfaces\ISerializable.cs" />
     <Compile Include="DDZUtils\MoveUtils.cs" />
     <Compile Include="DDZUtils\Players\PlayerFactory.cs" />

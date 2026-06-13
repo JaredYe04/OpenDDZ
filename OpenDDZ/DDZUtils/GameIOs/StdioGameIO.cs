@@ -146,6 +146,8 @@ namespace OpenDDZ.DDZUtils.GameIOs
             Emit(new { type = "play_rejected", requestId = rid, reason });
         }
 
+        public void BeforeBotPlay(IPlayer player) { }
+
         public string GetBidInput(IPlayer player)
         {
             var requestId = Guid.NewGuid().ToString("N");

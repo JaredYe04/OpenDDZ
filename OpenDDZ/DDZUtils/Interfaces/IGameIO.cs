@@ -23,5 +23,7 @@ namespace OpenDDZ.DDZUtils.Interfaces
         Card GetDiscardInput(IPlayer player);
         /// <summary> 出牌不合法时通知客户端重试，不消耗队列中的下一条输入。 </summary>
         void EmitPlayRejected(string reason);
+        /// <summary> 机器人出牌前 UI 层延迟（TUI 等可覆写，默认无延迟）。 </summary>
+        void BeforeBotPlay(IPlayer player);
     }
 }

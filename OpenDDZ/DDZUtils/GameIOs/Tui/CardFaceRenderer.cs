@@ -24,10 +24,10 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
         public const int CardTotalHeight = 5;
         public const int CardInnerWidth = 3;
 
-        public const int MiniWidth = 4;
+        public const int MiniWidth = 5;
         public const int MiniHeight = 3;
-        public const int MiniStepX = 4;
-        public const int MiniInnerWidth = 2;
+        public const int MiniStepX = 6;
+        public const int MiniInnerWidth = 3;
 
         public const int BackMiniWidth = 3;
         public const int BackMiniHeight = 3;
@@ -72,11 +72,22 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
         public static void DrawMiniCard(TgView view, int x, int y, Card card, CardVisualState state)
         {
             var (fg, bg, borderFg) = ColorsFor(card, state);
-            bool bold = state == CardVisualState.Hover;
 
-            DrawBorderRow(view, x, y, MiniWidth, bold, borderFg, bg, top: true);
-            DrawInnerRow(view, x, y + 1, MiniWidth, FormatFaceMini(card), fg, bg, borderFg);
-            DrawBorderRow(view, x, y + 2, MiniWidth, bold, borderFg, bg, top: false);
+            DrawBorderRow(view, x, y, MiniWidth, false, borderFg, bg, top: true);
+            DrawMiniInnerRow(view, x, y + 1, card, fg, bg, borderFg);
+            DrawBorderRow(view, x, y + 2, MiniWidth, false, borderFg, bg, top: false);
+        }
+
+        private static void DrawMiniInnerRow(TgView view, int x, int y, Card card, Color fg, Color bg, Color borderFg)
+        {
+            int right = x + MiniWidth - 1;
+            int innerCols = MiniWidth - 2;
+
+            DrawAt(view, x, y, "│", borderFg, bg);
+            for (int c = x + 1; c < right; c++)
+                DrawAt(view, c, y, " ", fg, bg);
+            DrawClippedCentered(view, x + 1, y, innerCols, FormatFaceMini(card), fg, bg);
+            DrawAt(view, right, y, "│", borderFg, bg);
         }
 
         public static void DrawMiniCardBack(TgView view, int x, int y)
@@ -144,17 +155,8 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
 
             var driver = Application.Driver;
             driver.SetAttribute(driver.MakeAttribute(fg, bg));
-            int col = start;
-            int used = start - x;
-            foreach (var ch in text)
-            {
-                int cw = Rune.ColumnWidth(ch);
-                if (used + cw > maxCols) break;
-                view.Move(col, y);
-                driver.AddRune(new Rune(ch));
-                col += cw;
-                used += cw;
-            }
+            view.Move(start, y);
+            driver.AddStr(text);
         }
 
         private static string TruncateDisplayWidth(string text, int maxCols)
@@ -262,6 +264,7 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
 
         private static void DrawAt(TgView view, int x, int y, string text, Color fg, Color bg)
         {
+            if (string.IsNullOrEmpty(text)) return;
             var driver = Application.Driver;
             driver.SetAttribute(driver.MakeAttribute(fg, bg));
             view.Move(x, y);

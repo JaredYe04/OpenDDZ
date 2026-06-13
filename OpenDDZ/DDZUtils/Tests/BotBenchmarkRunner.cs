@@ -39,12 +39,12 @@ namespace OpenDDZ.DDZUtils.Tests
                 SeatWins = new int[playerCount]
             };
 
-            var seatStrategies = ResolveMatchup(config.Matchup, playerCount, config.RolloutCount);
             var totalSw = Stopwatch.StartNew();
 
             for (int g = 0; g < config.GameCount; g++)
             {
                 int seed = config.BaseSeed + g;
+                var seatStrategies = ResolveMatchup(config.Matchup, playerCount, config.RolloutCount, seed);
                 var timedStrategies = seatStrategies.Select(s => new TimingBotStrategy(s)).ToArray();
                 var players = new List<IPlayer>();
                 for (int i = 0; i < playerCount; i++)
@@ -88,9 +88,9 @@ namespace OpenDDZ.DDZUtils.Tests
                     if (winnerIdx == dealer.LandlordIndex) stats.LandlordWins++;
                     else stats.FarmerWins++;
                 }
-                if (config.Mode == GameMode.FourPlayer)
+                if (config.Mode == GameMode.FourPlayer && dealer is IFourPlayerTeamInfo teamInfo)
                 {
-                    if (winnerIdx == 0 || winnerIdx == 2) stats.Team0Wins++;
+                    if (teamInfo.GetTeamId(winnerIdx) == 0) stats.Team0Wins++;
                     else stats.Team1Wins++;
                 }
 
@@ -110,7 +110,7 @@ namespace OpenDDZ.DDZUtils.Tests
             return stats;
         }
 
-        private static IBotStrategy[] ResolveMatchup(string matchup, int playerCount, int rolloutCount)
+        private static IBotStrategy[] ResolveMatchup(string matchup, int playerCount, int rolloutCount, int seed = 0)
         {
             var greedy = new GreedyBotStrategy();
             var mc = new MonteCarloBotStrategy { RolloutCount = rolloutCount, ParallelRollouts = true };
@@ -124,7 +124,15 @@ namespace OpenDDZ.DDZUtils.Tests
                     strategies[0] = mc;
                     break;
                 case "mc_team_vs_greedy":
-                    if (playerCount >= 4) { strategies[0] = mc; strategies[2] = mc; }
+                    if (playerCount >= 4)
+                    {
+                        FourPlayerTeamHelper.AssignTeams(seed, out int[] teamIds, out _);
+                        for (int i = 0; i < playerCount; i++)
+                        {
+                            if (teamIds[i] == teamIds[0])
+                                strategies[i] = mc;
+                        }
+                    }
                     break;
                 case "ml_vs_greedy":
                     strategies[0] = new MLBotStrategy(PlayerFactory.ResolveModelPath(null));

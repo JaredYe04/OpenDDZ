@@ -65,6 +65,7 @@ namespace OpenDDZ.DDZUtils.Controllers
                 var currentPlayer = _players[_dealer.GetCurrentPlayerIndex()];
                 if (currentPlayer is BotPlayer)
                 {
+                    _io.BeforeBotPlay(currentPlayer);
                     currentPlayer.OnDealerMessage(new DealerMessage { Type = DealerMessageType.RequestPlay, Content = "请出牌" });
                     continue;
                 }
@@ -93,6 +94,8 @@ namespace OpenDDZ.DDZUtils.Controllers
                             continue;
                         }
                         playAccepted = true;
+                        if (currentPlayer is RealPlayer)
+                            _io.ShowHand(currentPlayer);
                         break;
                     }
                     if (!playAccepted)

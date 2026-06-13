@@ -21,12 +21,13 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
             Width = Dim.Fill(),
             Height = Dim.Fill() - (CardFaceRenderer.CardTotalHeight + 5)
         };
-        private readonly View _tableInterior = new View { Width = Dim.Fill() - 2, Height = Dim.Fill() - 2 };
         private readonly SeatPanelView _upperSeat = new SeatPanelView();
         private readonly SeatPanelView _lowerSeat = new SeatPanelView();
         private readonly SeatPanelView _topSeat = new SeatPanelView { Visible = false };
+        private readonly SeatPanelView _selfSeat = new SeatPanelView();
         private readonly Label _messageLabel = new Label("") { X = 1, Y = 0, Width = Dim.Fill() - 2, Height = 3 };
         private readonly Label _errorLabel;
+        private readonly CardCounterView _cardCounter = new CardCounterView();
 
         private readonly HandCardView _handView = new HandCardView();
         private readonly StyledButton _btnPlay = new StyledButton("出牌");
@@ -38,8 +39,12 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
         private readonly View _discardPanel = new View { X = 1, Width = Dim.Fill() - 2, Height = 1, Visible = false };
         private readonly View _actionBar = new View { X = 1, Width = Dim.Fill() - 2, Height = 1 };
 
+        private readonly StyledButton _btnDiscardSkip = new StyledButton("不弃");
+        private readonly StyledButton _btnDiscardConfirm = new StyledButton("弃选中牌");
+
         private bool _inLayout;
         private bool _bidPanelBuilt;
+        private bool _discardPanelBuilt;
         private int _lastTableHeight = -1;
 
         public TuiGameView(TuiGameIO io)
@@ -59,21 +64,34 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
             {
                 Normal = Application.Driver.MakeAttribute(Color.White, Color.Green)
             };
-            _tableInterior.ColorScheme = _tableFrame.ColorScheme;
-            _tableFrame.Add(_tableInterior);
-            _tableInterior.Add(_upperSeat, _lowerSeat, _topSeat, _messageLabel);
+            var seatScheme = new ColorScheme
+            {
+                Normal = Application.Driver.MakeAttribute(Color.White, Color.Green)
+            };
+            _upperSeat.ColorScheme = seatScheme;
+            _lowerSeat.ColorScheme = seatScheme;
+            _topSeat.ColorScheme = seatScheme;
+            _selfSeat.ColorScheme = seatScheme;
+            _messageLabel.ColorScheme = seatScheme;
 
             _actionBar.Add(_btnPlay, _btnHint, _btnPass, _btnCantBeat);
 
-            Add(_titleLabel, _statusLabel, _tableFrame, _errorLabel, _actionBar, _bidPanel, _discardPanel, _handView);
+            Add(_cardCounter, _titleLabel, _statusLabel, _tableFrame,
+                _upperSeat, _lowerSeat, _topSeat, _selfSeat, _messageLabel,
+                _errorLabel, _actionBar, _bidPanel, _discardPanel, _handView);
 
             _btnPlay.Clicked += OnPlayClicked;
             _btnHint.Clicked += OnHintClicked;
             _btnPass.Clicked += OnPassClicked;
             _btnCantBeat.Clicked += OnPassClicked;
+            _btnDiscardSkip.Clicked += OnDiscardSkipClicked;
+            _btnDiscardConfirm.Clicked += OnDiscardConfirmClicked;
+
+            BuildDiscardPanelOnce();
 
             _handView.SelectionChanged += SyncHandSelectionToState;
             _state.StateChanged += RefreshUi;
+            _cardCounter.LayoutChanged += OnCardCounterLayoutChanged;
             RefreshUi();
         }
 
@@ -81,12 +99,54 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
         {
             _state.StateChanged -= RefreshUi;
             _handView.SelectionChanged -= SyncHandSelectionToState;
+            _cardCounter.LayoutChanged -= OnCardCounterLayoutChanged;
+        }
+
+        private void OnCardCounterLayoutChanged()
+        {
+            LayoutTable();
+            SetNeedsDisplay();
         }
 
         private void SyncHandSelectionToState()
         {
             _state.SetSelection(_handView.GetSelectedIndices(), _handView.GetHintIndices());
             _handView.MarkSelectionApplied(_state.SelectionVersion);
+        }
+
+        private void OnDiscardSkipClicked()
+        {
+            if (_state.InputMode != TuiInputMode.WaitDiscard) return;
+            _state.ErrorMessage = "";
+            _io.SubmitDiscard(null);
+        }
+
+        private void OnDiscardConfirmClicked()
+        {
+            if (_state.InputMode != TuiInputMode.WaitDiscard) return;
+            SyncHandSelectionToState();
+            var sel = _handView.GetSelectedCards();
+            if (sel.Count != 1)
+            {
+                _state.ErrorMessage = "请选择一张要弃的牌";
+                SetNeedsDisplay();
+                return;
+            }
+            _state.ErrorMessage = "";
+            _io.SubmitDiscard(sel[0]);
+        }
+
+        private void BuildDiscardPanelOnce()
+        {
+            if (_discardPanelBuilt) return;
+            _discardPanel.RemoveAll();
+            _discardPanel.Add(new Label("第三、第四顺位可弃牌：") { X = 0, Y = 0 });
+            _btnDiscardSkip.X = 12;
+            _btnDiscardSkip.Y = 0;
+            _btnDiscardConfirm.X = 24;
+            _btnDiscardConfirm.Y = 0;
+            _discardPanel.Add(_btnDiscardSkip, _btnDiscardConfirm);
+            _discardPanelBuilt = true;
         }
 
         private void OnPlayClicked()
@@ -152,7 +212,7 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
 
         private void RefreshUiCore()
         {
-            int human = _state.HumanSeatIndex;
+            int human = _state.ViewSeatIndex;
             int n = Math.Max(1, _state.PlayerCount);
             var seats = _state.Seats ?? new List<SeatDisplayInfo>();
 
@@ -162,16 +222,25 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
                 return seats.FirstOrDefault(s => s.SeatIndex == idx);
             }
 
+            string SeatLabel(string baseLabel, SeatDisplayInfo info)
+            {
+                if (info != null && info.IsTeammate && baseLabel != "我")
+                    return baseLabel + "·队友";
+                return baseLabel;
+            }
+
             // 逆时针：上家 = 上一个出牌 (human-1)，下家 = 下一个 (human+1)，对家 = human+2
-            _upperSeat.SetSeat("上家", GetRel(n - 1));
-            _lowerSeat.SetSeat("下家", GetRel(1));
+            _upperSeat.SetSeat(SeatLabel("上家", GetRel(n - 1)), GetRel(n - 1));
+            _lowerSeat.SetSeat(SeatLabel("下家", GetRel(1)), GetRel(1));
+            _selfSeat.SetSeat("我", GetRel(0), hideHandBacks: true);
             _topSeat.Visible = n >= 4;
             if (n >= 4)
-                _topSeat.SetSeat("对家", GetRel(2));
+                _topSeat.SetSeat(SeatLabel("对家", GetRel(2)), GetRel(2));
 
             var current = seats.FirstOrDefault(s => s.IsCurrentTurn);
             _statusLabel.Text = current != null
-                ? $"当前回合：{current.PlayerName}" + (current.IsLandlord ? " [地主]" : "")
+                ? $"当前回合：{current.PlayerName}"
+                  + (_state.Mode != GameMode.FourPlayer && current.IsLandlord ? " [地主]" : "")
                 : "等待中…";
 
             _messageLabel.Text = _state.Messages.Count > 0
@@ -179,6 +248,8 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
                 : "";
 
             _errorLabel.Text = string.IsNullOrEmpty(_state.ErrorMessage) ? "" : "! " + _state.ErrorMessage;
+
+            _cardCounter.SetCounts(_state.CardCounter);
 
             bool waitPlay = _state.InputMode == TuiInputMode.WaitPlay;
             bool waitBid = _state.InputMode == TuiInputMode.WaitBid;
@@ -202,8 +273,10 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
             {
                 _bidPanelBuilt = false;
             }
-            if (waitDiscard) RebuildDiscardPanel();
+            if (waitDiscard)
+                BuildDiscardPanelOnce();
 
+            _handView.SingleSelectMode = waitDiscard;
             _handView.CanSelect = waitPlay || waitDiscard;
             _handView.UpdateHand(_state.HandCards);
             if (waitPlay || waitDiscard)
@@ -240,28 +313,70 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
             if (viewH <= 0) viewH = 24;
 
             const int bottomReserve = CardFaceRenderer.CardTotalHeight + 5;
-            int tableH = Math.Max(8, viewH - 2 - bottomReserve);
+            int topRows = Math.Max(2, _cardCounter.LayoutHeight);
+            _tableFrame.Y = topRows;
+            int tableH = Math.Max(8, viewH - topRows - bottomReserve);
             if (_lastTableHeight != tableH)
             {
                 _lastTableHeight = tableH;
                 _tableFrame.Height = tableH;
             }
 
-            int tableW = _tableInterior.Frame.Width;
+            int tableW = _tableFrame.Frame.Width - 2;
             if (tableW <= 0) tableW = Math.Max(40, viewW - 4);
+            int tableLeft = _tableFrame.Frame.X + 1;
+            int tableTop = _tableFrame.Frame.Y + 1;
 
-            _upperSeat.X = 0;
-            _upperSeat.Y = 1;
+            int n = Math.Max(1, _state.PlayerCount);
+            bool fourPlayer = n >= 4;
 
-            _lowerSeat.X = Math.Max(0, tableW - _lowerSeat.PanelWidth);
-            _lowerSeat.Y = 1;
+            int minSideW = CardFaceRenderer.ComputeMiniRowWidth(4) + 2;
+            int maxSideW = Math.Max(minSideW, (tableW - 4) / 2);
+            if (fourPlayer && _state.Seats != null)
+            {
+                foreach (var seat in _state.Seats)
+                {
+                    if (!seat.IsTeammate || seat.VisibleHandCards == null || seat.VisibleHandCards.Count == 0)
+                        continue;
+                    int need = CardFaceRenderer.ComputeMiniRowWidth(seat.VisibleHandCards.Count) + 2;
+                    maxSideW = Math.Max(maxSideW, Math.Min(need, tableW - 4));
+                }
+            }
+            _upperSeat.ApplyLayoutWidth(maxSideW);
+            _lowerSeat.ApplyLayoutWidth(maxSideW);
 
-            _topSeat.X = Math.Max(0, (tableW - _topSeat.PanelWidth) / 2);
-            _topSeat.Y = 0;
+            int sideSeatY = ComputeSideSeatY(tableH, fourPlayer);
 
-            _messageLabel.X = 1;
-            _messageLabel.Y = Math.Max(7, tableH - 4);
+            _upperSeat.X = tableLeft;
+            _upperSeat.Y = tableTop + sideSeatY;
+
+            _lowerSeat.X = tableLeft + Math.Max(0, tableW - _lowerSeat.LayoutWidth - 2);
+            _lowerSeat.Y = tableTop + sideSeatY;
+
+            _topSeat.X = tableLeft + Math.Max(0, (tableW - _topSeat.PanelWidth) / 2);
+            _topSeat.Y = tableTop;
+
+            _selfSeat.X = tableLeft + Math.Max(0, (tableW - _selfSeat.PanelWidth) / 2);
+            int selfSeatY = fourPlayer
+                ? Math.Min(Math.Max(sideSeatY + 8, 6), tableH - 6)
+                : Math.Max(4, tableH - 12);
+            _selfSeat.Y = tableTop + selfSeatY;
+
+            _messageLabel.X = tableLeft + 1;
+            _messageLabel.Y = tableTop + (fourPlayer
+                ? Math.Min(tableH - 3, selfSeatY + 6)
+                : Math.Max(7, tableH - 4));
             _messageLabel.Width = tableW - 2;
+
+            _cardCounter.X = 0;
+            _cardCounter.Y = 0;
+            int headerX = _cardCounter.LayoutWidth + 1;
+            if (headerX < 12) headerX = 12;
+            _titleLabel.X = headerX;
+            _titleLabel.Y = 0;
+            _statusLabel.X = headerX;
+            _statusLabel.Y = 1;
+            _statusLabel.Width = Math.Max(10, viewW - headerX - 2);
 
             int handW = _handView.ComputeRequiredWidth();
             _handView.X = Math.Max(1, (viewW - handW) / 2);
@@ -280,10 +395,27 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
             _bidPanel.Y = _actionBar.Y;
             _discardPanel.Y = _actionBar.Y;
 
-            BringSubviewToFront(_actionBar);
-            BringSubviewToFront(_bidPanel);
-            BringSubviewToFront(_discardPanel);
+            BringSubviewToFront(_upperSeat);
+            BringSubviewToFront(_lowerSeat);
+            BringSubviewToFront(_topSeat);
+            BringSubviewToFront(_selfSeat);
+            BringSubviewToFront(_messageLabel);
+            BringSubviewToFront(_cardCounter);
             BringSubviewToFront(_handView);
+            if (_state.InputMode == TuiInputMode.WaitPlay) BringSubviewToFront(_actionBar);
+            if (_state.InputMode == TuiInputMode.WaitBid) BringSubviewToFront(_bidPanel);
+            if (_state.InputMode == TuiInputMode.WaitDiscard) BringSubviewToFront(_discardPanel);
+        }
+
+        private static int ComputeSideSeatY(int tableH, bool fourPlayer)
+        {
+            if (!fourPlayer)
+                return 1;
+
+            // 对家：标签(0) + 手牌(2-4) + 出牌(6-8) + 牌型(9) ≈ 10 行
+            const int belowTopSeat = 10;
+            int maxY = Math.Max(1, tableH - 13);
+            return Math.Min(belowTopSeat, maxY);
         }
 
         private void RebuildBidPanel()
@@ -304,28 +436,7 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
             _bidPanelBuilt = true;
         }
 
-        private void RebuildDiscardPanel()
-        {
-            _discardPanel.RemoveAll();
-            _discardPanel.Add(new Label("后手弃牌：") { X = 0, Y = 0 });
-            var skip = new StyledButton("不弃") { X = 12, Y = 0 };
-            skip.Clicked += () => _io.SubmitDiscard(null);
-            _discardPanel.Add(skip);
-
-            var discard = new StyledButton("弃选中牌") { X = 24, Y = 0 };
-            discard.Clicked += () =>
-            {
-                var sel = _handView.GetSelectedCards();
-                if (sel.Count != 1)
-                {
-                    _state.ErrorMessage = "请选择一张要弃的牌";
-                    RefreshUi();
-                    return;
-                }
-                _io.SubmitDiscard(sel[0]);
-            };
-            _discardPanel.Add(discard);
-        }
+        private void RebuildDiscardPanel() => BuildDiscardPanelOnce();
 
         public void OnTerminalResize()
         {
@@ -343,6 +454,19 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
 
         public override bool ProcessKey(KeyEvent kb)
         {
+            if (_state.InputMode == TuiInputMode.WaitDiscard)
+            {
+                if (kb.Key == Key.Enter)
+                {
+                    OnDiscardConfirmClicked();
+                    return true;
+                }
+                if (kb.Key == Key.Esc)
+                {
+                    OnDiscardSkipClicked();
+                    return true;
+                }
+            }
             if (_state.InputMode == TuiInputMode.WaitPlay)
             {
                 if (kb.Key == Key.Enter)

@@ -39,6 +39,8 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
             }
         }
 
+        public bool SingleSelectMode { get; set; }
+
         public HandCardView()
         {
             CanFocus = true;
@@ -119,8 +121,14 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
         {
             if (index < 0 || index >= _hand.Count) return;
             _hint.Clear();
-            if (_selected.Contains(index)) _selected.Remove(index);
-            else _selected.Add(index);
+            if (_selected.Contains(index))
+                _selected.Remove(index);
+            else
+            {
+                if (SingleSelectMode)
+                    _selected.Clear();
+                _selected.Add(index);
+            }
             SetNeedsDisplay();
             SyncSelectionChanged();
         }
@@ -285,6 +293,18 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
         {
             if (!_mouseDown)
                 return;
+
+            if (SingleSelectMode)
+            {
+                if (releaseIdx >= 0)
+                {
+                    _selected.Clear();
+                    _selected.Add(releaseIdx);
+                    SyncSelectionChanged();
+                }
+                ResetMouseState();
+                return;
+            }
 
             if (releaseIdx >= 0)
                 _dragCurrent = releaseIdx;

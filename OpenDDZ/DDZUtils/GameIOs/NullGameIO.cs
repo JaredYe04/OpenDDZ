@@ -16,5 +16,6 @@ namespace OpenDDZ.DDZUtils.GameIOs
         public void ShowGameEnd(IPlayer winner) { LastWinner = winner; }
         public Card GetDiscardInput(IPlayer player) => null;
         public void EmitPlayRejected(string reason) { }
+        public void BeforeBotPlay(IPlayer player) { }
     }
 }

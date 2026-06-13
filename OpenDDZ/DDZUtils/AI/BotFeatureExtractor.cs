@@ -41,7 +41,9 @@ namespace OpenDDZ.DDZUtils.AI
 
             f[i++] = ctx.IsLandlord ? 1f : 0f;
             f[i++] = (!ctx.IsLandlord && ctx.LandlordIndex >= 0) ? 1f : 0f;
-            f[i++] = ctx.Mode == GameMode.FourPlayer ? (ctx.MyIndex % 2 == 0 ? 1f : 0f) : 0f;
+            f[i++] = ctx.Mode == GameMode.FourPlayer && ctx.TeamIds != null && ctx.MyIndex < ctx.TeamIds.Length
+                ? (ctx.TeamIds[ctx.MyIndex] == 0 ? 1f : 0f)
+                : (ctx.Mode == GameMode.FourPlayer ? (ctx.MyIndex % 2 == 0 ? 1f : 0f) : 0f);
 
             bool following = ctx.EffectiveLastMove != null && ctx.EffectiveLastMove.Cards?.Count > 0;
             f[i++] = following ? 1f : 0f;

@@ -121,7 +121,9 @@ namespace OpenDDZ.DDZUtils.GameIOs.Tui
                 io.SetMode(config.Mode);
                 state.PlayerCount = config.Players.Count;
                 state.HumanSeatIndex = FindHumanSeat(config.Players);
+                state.ViewSeatIndex = state.HumanSeatIndex;
                 state.Mode = config.Mode;
+                state.FourPlayerTeamIds = null;
 
                 ShowScreen(Screen.Game);
 

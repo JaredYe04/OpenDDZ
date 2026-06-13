@@ -80,13 +80,13 @@ namespace OpenDDZ.DDZUtils.AI
             }
             else if (hands[p].Count == 0)
             {
-                return FastGameSimulator.DidPlayerWin(p, ctx.MyIndex, ctx.Mode);
+                return FastGameSimulator.DidPlayerWin(p, ctx.MyIndex, ctx.Mode, ctx.TeamIds);
             }
 
             var sim = new FastGameSimulator(hands, nextPlayer, lastMove, lastPlayer,
                 ctx.LandlordIndex, ctx.Mode, ctx.Rules);
             int winner = sim.RunToEnd(rng);
-            return FastGameSimulator.DidPlayerWin(winner, ctx.MyIndex, ctx.Mode);
+            return FastGameSimulator.DidPlayerWin(winner, ctx.MyIndex, ctx.Mode, ctx.TeamIds);
         }
 
         public static bool HasMeaningfulSpread(double[] winRates, double minSpread = 0.05)
